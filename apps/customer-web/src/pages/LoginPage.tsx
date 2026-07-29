@@ -4,6 +4,35 @@ import toast from 'react-hot-toast';
 import { api } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 
+function IconCar() {
+  return (
+    <svg viewBox="0 0 32 32" fill="none" style={{ width: 32, height: 32 }}>
+      <path d="M6 20l3-9h14l3 9" stroke="white" strokeWidth="2" strokeLinecap="round" />
+      <rect x="3" y="20" width="26" height="8" rx="3" stroke="white" strokeWidth="2" />
+      <circle cx="9" cy="28" r="2.5" fill="white" />
+      <circle cx="23" cy="28" r="2.5" fill="white" />
+    </svg>
+  );
+}
+
+function IconArrowRight() {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2"
+      style={{ width: 16, height: 16 }}>
+      <path d="M3 8h10M9 4l4 4-4 4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconChevronLeft() {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2"
+      style={{ width: 16, height: 16 }}>
+      <path d="M10 3L5 8l5 5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export default function LoginPage() {
   const navigate = useNavigate();
   const { setAuth } = useAuthStore();
@@ -15,10 +44,7 @@ export default function LoginPage() {
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const handleSendOtp = async () => {
-    if (phone.length < 10) {
-      toast.error('Enter a valid 10-digit phone number');
-      return;
-    }
+    if (phone.length < 10) { toast.error('Enter a valid 10-digit phone number'); return; }
     setLoading(true);
     try {
       const res: any = await api.sendOtp(phone);
@@ -38,15 +64,26 @@ export default function LoginPage() {
 
   const handleVerifyOtp = async () => {
     const otpStr = otp.join('');
-    if (otpStr.length < 4) {
-      toast.error('Enter the 4-digit OTP');
-      return;
-    }
+    if (otpStr.length < 4) { toast.error('Enter the 4-digit OTP'); return; }
     setLoading(true);
     try {
       const res: any = await api.login(phone, otpStr);
       setAuth(res.user, res.accessToken, res.refreshToken);
-      toast.success(`Welcome back, ${res.user?.name || 'there'}! 👋`);
+      toast.success(`Welcome, ${res.user?.name || 'there'}!`);
+      navigate('/');
+    } catch (err: any) {
+      toast.error(err.message || 'Invalid OTP');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyOtpWithValue = async (otpStr: string) => {
+    setLoading(true);
+    try {
+      const res: any = await api.login(phone, otpStr);
+      setAuth(res.user, res.accessToken, res.refreshToken);
+      toast.success(`Welcome, ${res.user?.name || 'there'}!`);
       navigate('/');
     } catch (err: any) {
       toast.error(err.message || 'Invalid OTP');
@@ -60,26 +97,9 @@ export default function LoginPage() {
     const newOtp = [...otp];
     newOtp[index] = value.slice(-1);
     setOtp(newOtp);
-    if (value && index < 3) {
-      inputRefs.current[index + 1]?.focus();
-    }
+    if (value && index < 3) inputRefs.current[index + 1]?.focus();
     if (newOtp.every(d => d) && newOtp.join('').length === 4) {
-      // Auto-submit when all digits filled
       setTimeout(() => handleVerifyOtpWithValue(newOtp.join('')), 100);
-    }
-  };
-
-  const handleVerifyOtpWithValue = async (otpStr: string) => {
-    setLoading(true);
-    try {
-      const res: any = await api.login(phone, otpStr);
-      setAuth(res.user, res.accessToken, res.refreshToken);
-      toast.success(`Welcome back, ${res.user?.name || 'there'}! 👋`);
-      navigate('/');
-    } catch (err: any) {
-      toast.error(err.message || 'Invalid OTP');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -94,44 +114,50 @@ export default function LoginPage() {
   }, [step]);
 
   return (
-    <div className="page" style={{ background: 'linear-gradient(135deg, #060B18 0%, #0F1D35 50%, #060B18 100%)', position: 'relative', overflow: 'hidden' }}>
-      {/* Background decorative circles */}
+    <div className="page" style={{
+      alignItems: 'center', justifyContent: 'center',
+      background: 'var(--color-bg)', position: 'relative', overflow: 'hidden',
+      padding: '2rem',
+    }}>
+      {/* Subtle bg glow */}
       <div style={{
-        position: 'absolute', top: '-20%', right: '-20%', width: '500px', height: '500px',
-        background: 'radial-gradient(circle, rgba(13,148,136,0.15) 0%, transparent 70%)',
+        position: 'absolute', top: '-15%', right: '-15%',
+        width: '400px', height: '400px',
+        background: 'radial-gradient(circle, rgba(13,148,136,0.12) 0%, transparent 70%)',
         borderRadius: '50%', pointerEvents: 'none',
       }} />
       <div style={{
-        position: 'absolute', bottom: '-20%', left: '-20%', width: '400px', height: '400px',
-        background: 'radial-gradient(circle, rgba(13,148,136,0.08) 0%, transparent 70%)',
+        position: 'absolute', bottom: '-20%', left: '-20%',
+        width: '350px', height: '350px',
+        background: 'radial-gradient(circle, rgba(13,148,136,0.06) 0%, transparent 70%)',
         borderRadius: '50%', pointerEvents: 'none',
       }} />
 
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '2rem', zIndex: 1 }}>
+      <div style={{ width: '100%', maxWidth: 400, zIndex: 1 }} className="animate-fade-in">
         {/* Logo */}
-        <div style={{ textAlign: 'center', marginBottom: '3rem' }} className="animate-fade-in">
+        <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
           <div style={{
-            width: '80px', height: '80px', borderRadius: '24px', margin: '0 auto 1rem',
-            background: 'linear-gradient(135deg, #0D9488, #0F766E)',
+            width: 72, height: 72, borderRadius: 20, margin: '0 auto 1rem',
+            background: 'var(--color-primary)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 0 40px rgba(13,148,136,0.4)',
+            boxShadow: '0 0 32px rgba(13,148,136,0.35)',
           }}>
-            <span style={{ fontSize: '2.5rem' }}>🚗</span>
+            <IconCar />
           </div>
-          <h1 style={{ fontSize: '2rem', fontWeight: 800, letterSpacing: '-0.02em', color: '#F1F5F9' }}>
+          <h1 style={{ fontSize: '1.75rem', fontWeight: 800, letterSpacing: '-0.02em' }}>
             DriverConnect
           </h1>
-          <p style={{ color: '#94A3B8', marginTop: '0.5rem', fontSize: '0.9rem' }}>
+          <p style={{ color: 'var(--color-text-muted)', marginTop: '0.375rem', fontSize: '0.875rem' }}>
             Professional drivers for your car
           </p>
         </div>
 
         {/* Card */}
-        <div className="card animate-fade-in" style={{ width: '100%', maxWidth: '400px', padding: '2rem' }}>
+        <div className="card">
           {step === 'phone' ? (
             <div>
-              <h2 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>Welcome back 👋</h2>
-              <p style={{ color: '#94A3B8', marginBottom: '2rem', fontSize: '0.9rem' }}>
+              <h2 style={{ fontSize: '1.25rem', marginBottom: '0.375rem' }}>Welcome back</h2>
+              <p style={{ color: 'var(--color-text-muted)', marginBottom: '1.75rem', fontSize: '0.875rem' }}>
                 Enter your phone number to continue
               </p>
 
@@ -139,8 +165,9 @@ export default function LoginPage() {
                 <label className="input-label">Phone Number</label>
                 <div style={{ position: 'relative' }}>
                   <span style={{
-                    position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)',
-                    color: '#94A3B8', fontSize: '0.9rem', pointerEvents: 'none',
+                    position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)',
+                    color: 'var(--color-text-secondary)', fontSize: '0.9rem', pointerEvents: 'none',
+                    fontWeight: 500,
                   }}>+91</span>
                   <input
                     type="tel"
@@ -148,8 +175,8 @@ export default function LoginPage() {
                     placeholder="9876543210"
                     value={phone}
                     onChange={e => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                    onKeyDown={e => e.key === 'Enter' && handleSendOtp()}
-                    style={{ paddingLeft: '48px' }}
+                    onKeyDown={e => e.key === 'Enter' && !e.nativeEvent.isComposing && handleSendOtp()}
+                    style={{ paddingLeft: 46 }}
                     autoFocus
                   />
                 </div>
@@ -159,14 +186,22 @@ export default function LoginPage() {
                 className="btn btn-primary btn-full btn-lg"
                 onClick={handleSendOtp}
                 disabled={loading || phone.length < 10}
+                style={{ gap: '0.5rem' }}
               >
-                {loading ? <div className="spinner" style={{ width: '20px', height: '20px' }} /> : null}
-                {loading ? 'Sending...' : 'Send OTP →'}
+                {loading
+                  ? <div className="spinner" style={{ width: 18, height: 18, borderWidth: 2 }} />
+                  : <IconArrowRight />}
+                {loading ? 'Sending...' : 'Send OTP'}
               </button>
 
-              <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'rgba(13,148,136,0.05)', borderRadius: '12px', border: '1px solid rgba(13,148,136,0.2)' }}>
-                <p style={{ fontSize: '0.75rem', color: '#94A3B8', textAlign: 'center' }}>
-                  🔐 Dev mode: Use any phone number<br />OTP will be shown in the response
+              <div style={{
+                marginTop: '1.25rem', padding: '0.75rem',
+                background: 'var(--color-primary-subtle)',
+                border: '1px solid rgba(13,148,136,0.18)',
+                borderRadius: 'var(--radius-md)',
+              }}>
+                <p style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', textAlign: 'center' }}>
+                  Dev mode — use any number. OTP shown in response.
                 </p>
               </div>
             </div>
@@ -175,25 +210,31 @@ export default function LoginPage() {
               <button
                 className="btn btn-ghost"
                 onClick={() => { setStep('phone'); setOtp(['', '', '', '']); }}
-                style={{ marginBottom: '1.5rem', padding: '0.25rem 0' }}
+                style={{ marginBottom: '1.5rem', padding: '0', gap: '0.3rem', fontSize: '0.875rem' }}
               >
-                ← Back
+                <IconChevronLeft />
+                Back
               </button>
 
-              <h2 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>Enter OTP</h2>
-              <p style={{ color: '#94A3B8', marginBottom: '0.5rem', fontSize: '0.9rem' }}>
+              <h2 style={{ fontSize: '1.25rem', marginBottom: '0.375rem' }}>Enter OTP</h2>
+              <p style={{ color: 'var(--color-text-muted)', marginBottom: '0.5rem', fontSize: '0.875rem' }}>
                 Sent to +91 {phone}
               </p>
 
               {devOtp && (
-                <div style={{ marginBottom: '1.5rem', padding: '0.75rem', background: 'rgba(245,158,11,0.1)', borderRadius: '8px', border: '1px solid rgba(245,158,11,0.3)' }}>
-                  <p style={{ fontSize: '0.8rem', color: '#F59E0B', fontWeight: 600 }}>
-                    🔑 Dev OTP: <span style={{ fontSize: '1.2rem', letterSpacing: '0.1em' }}>{devOtp}</span>
+                <div style={{
+                  marginBottom: '1.25rem', padding: '0.625rem 0.875rem',
+                  background: 'var(--color-warning-bg)',
+                  border: '1px solid rgba(245,158,11,0.25)',
+                  borderRadius: 'var(--radius-md)',
+                }}>
+                  <p style={{ fontSize: '0.78rem', color: 'var(--color-warning)', fontWeight: 600 }}>
+                    Dev OTP: <span style={{ fontSize: '1.1rem', letterSpacing: '0.1em' }}>{devOtp}</span>
                   </p>
                 </div>
               )}
 
-              <div className="otp-input-group" style={{ marginBottom: '2rem' }}>
+              <div className="otp-input-group" style={{ marginBottom: '1.75rem' }}>
                 {otp.map((digit, i) => (
                   <input
                     key={i}
@@ -214,13 +255,17 @@ export default function LoginPage() {
                 onClick={handleVerifyOtp}
                 disabled={loading || otp.join('').length < 4}
               >
-                {loading ? <div className="spinner" style={{ width: '20px', height: '20px' }} /> : null}
+                {loading && <div className="spinner" style={{ width: 18, height: 18, borderWidth: 2 }} />}
                 {loading ? 'Verifying...' : 'Verify & Login'}
               </button>
 
-              <p style={{ textAlign: 'center', marginTop: '1rem', fontSize: '0.85rem', color: '#64748B' }}>
-                Didn't receive?{' '}
-                <button className="btn btn-ghost" style={{ padding: '0', fontSize: '0.85rem', color: '#0D9488' }} onClick={() => { setStep('phone'); }}>
+              <p style={{ textAlign: 'center', marginTop: '1rem', fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>
+                Did not receive it?{' '}
+                <button
+                  className="btn btn-ghost"
+                  style={{ padding: 0, fontSize: '0.82rem', color: 'var(--color-primary)' }}
+                  onClick={() => setStep('phone')}
+                >
                   Resend OTP
                 </button>
               </p>
@@ -228,7 +273,7 @@ export default function LoginPage() {
           )}
         </div>
 
-        <p style={{ marginTop: '2rem', color: '#475569', fontSize: '0.8rem', textAlign: 'center' }}>
+        <p style={{ marginTop: '1.5rem', color: 'var(--color-text-disabled)', fontSize: '0.75rem', textAlign: 'center' }}>
           By continuing, you agree to our Terms of Service and Privacy Policy
         </p>
       </div>
