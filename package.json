@@ -1,0 +1,24 @@
+{
+  "name": "driverconnect",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev --workspace=apps/server\" \"npm run dev --workspace=apps/customer-web\" \"npm run dev --workspace=apps/driver-web\" \"npm run dev --workspace=apps/admin-web\"",
+    "dev:server": "npm run dev --workspace=apps/server",
+    "dev:customer": "npm run dev --workspace=apps/customer-web",
+    "dev:driver": "npm run dev --workspace=apps/driver-web",
+    "dev:admin": "npm run dev --workspace=apps/admin-web",
+    "build": "npm run build --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "seed": "npm run seed --workspace=apps/server",
+    "test": "npm run test --workspaces --if-present"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
