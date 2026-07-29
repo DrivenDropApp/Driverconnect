@@ -426,7 +426,7 @@ router.post('/:id/rate', requireAuth, requireRole('customer'), validate(rateSche
   const raterId = req.user!.userId;
 
   try {
-    const { Rating } = await import('../../models/Rating');
+    const { Rating } = await import('../../../models/Rating');
     const booking = await Booking.findById(id).populate('driverId', '_id');
 
     if (!booking || booking.status !== 'completed') {
@@ -450,7 +450,7 @@ router.post('/:id/rate', requireAuth, requireRole('customer'), validate(rateSche
 
     // Update driver average rating
     const ratings = await Rating.find({ rateeId: booking.driverId });
-    const avg = ratings.reduce((sum, r) => sum + r.stars, 0) / ratings.length;
+    const avg = ratings.reduce((sum: number, r: any) => sum + r.stars, 0) / ratings.length;
     await Driver.findByIdAndUpdate(booking.driverId, { rating: Math.round(avg * 10) / 10, totalRatings: ratings.length });
 
     res.status(201).json(rating);

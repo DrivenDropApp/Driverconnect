@@ -58,8 +58,8 @@ async function bootstrap() {
   app.use(express.urlencoded({ extended: true }));
 
   // Request ID + structured logging
-  app.use((req, _res, next) => {
-    req.requestId = (req.headers['x-request-id'] as string) || uuidv4();
+  app.use((req: express.Request, _res: express.Response, next: express.NextFunction) => {
+    (req as any).requestId = (req.headers['x-request-id'] as string) || uuidv4();
     next();
   });
 
