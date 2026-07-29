@@ -2,10 +2,15 @@ import { io, Socket } from 'socket.io-client';
 
 let socket: Socket | null = null;
 
+const API_URL = import.meta.env.VITE_API_URL || '';
+const SOCKET_URL = API_URL.replace(/\/api\/v1\/?$/, ''); // Remove /api/v1 from the end of the URL
+
 export function getDriverSocket(token: string): Socket {
   if (socket?.connected) return socket;
 
-  socket = io('/driver', {
+  const url = SOCKET_URL ? `${SOCKET_URL}/driver` : '/driver';
+
+  socket = io(url, {
     auth: { token },
     transports: ['websocket', 'polling'],
     reconnection: true,
