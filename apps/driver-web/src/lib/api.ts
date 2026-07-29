@@ -31,6 +31,8 @@ async function request<T>(path: string, options: RequestInit = {}, extraHeaders:
 }
 
 export const driverApi = {
+  getUploadSignature: () => request('/upload/signature'),
+
   sendOtp: (phone: string) =>
     request('/auth/otp/send', { method: 'POST', body: JSON.stringify({ phone, role: 'driver' }) }),
 

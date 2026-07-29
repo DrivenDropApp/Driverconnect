@@ -143,6 +143,40 @@ export default function KycPage() {
   const [urls, setUrls] = useState({ photoUrl: '', licenseUrl: '', aadhaarUrl: '' });
   const [bankDetails, setBankDetails] = useState({ accountNo: '', ifsc: '' });
   const [submitting, setSubmitting] = useState(false);
+  const [uploading, setUploading] = useState({ photo: false, license: false, aadhaar: false });
+
+  const handleFileUpload = async (type: 'photo' | 'license' | 'aadhaar', e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(u => ({ ...u, [type]: true }));
+    try {
+      const { signature, timestamp, apiKey, cloudName }: any = await driverApi.getUploadSignature();
+      
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('api_key', apiKey);
+      formData.append('timestamp', timestamp.toString());
+      formData.append('signature', signature);
+      
+      const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!res.ok) {
+        throw new Error('Upload failed');
+      }
+
+      const data = await res.json();
+      setUrls(u => ({ ...u, [`${type}Url`]: data.secure_url }));
+      toast.success('File uploaded successfully');
+    } catch (err: any) {
+      toast.error('Failed to upload image. Please try again.');
+    } finally {
+      setUploading(u => ({ ...u, [type]: false }));
+    }
+  };
 
   useEffect(() => {
     driverApi.getProfile().then((p: any) => {
@@ -307,15 +341,18 @@ export default function KycPage() {
             )}
 
             <div className="input-group" style={{ marginBottom: 'var(--sp-5)' }}>
-              <label className="input-label">Photo URL (Cloudinary / CDN)</label>
+              <label className="input-label">Upload Photo</label>
               <input
+                type="file"
+                accept="image/*"
                 className="input"
-                placeholder="https://..."
-                value={urls.photoUrl}
-                onChange={e => setUrls(u => ({ ...u, photoUrl: e.target.value }))}
+                onChange={e => handleFileUpload('photo', e)}
+                disabled={uploading.photo}
+                style={{ padding: '0.5rem' }}
               />
+              {uploading.photo && <div style={{ fontSize: '0.8rem', color: 'var(--color-primary)', marginTop: 4 }}>Uploading...</div>}
               <span style={{ fontSize: '0.72rem', color: 'var(--color-text-disabled)', marginTop: 3 }}>
-                In production, tap to upload from camera or gallery
+                Tap to upload from camera or gallery
               </span>
             </div>
 
@@ -350,14 +387,30 @@ export default function KycPage() {
               </div>
             </div>
 
-            <div className="input-group" style={{ marginBottom: 'var(--sp-5)' }}>
-              <label className="input-label">License Document URL</label>
-              <input
-                className="input"
-                placeholder="https://..."
-                value={urls.licenseUrl}
-                onChange={e => setUrls(u => ({ ...u, licenseUrl: e.target.value }))}
+            {urls.licenseUrl && (
+              <img
+                src={urls.licenseUrl}
+                alt="License preview"
+                style={{
+                  width: '100%', height: 160, borderRadius: 'var(--radius-md)',
+                  objectFit: 'cover', display: 'block',
+                  marginBottom: 'var(--sp-4)',
+                  border: '1px solid var(--color-border)',
+                }}
               />
+            )}
+
+            <div className="input-group" style={{ marginBottom: 'var(--sp-5)' }}>
+              <label className="input-label">Upload License</label>
+              <input
+                type="file"
+                accept="image/*"
+                className="input"
+                onChange={e => handleFileUpload('license', e)}
+                disabled={uploading.license}
+                style={{ padding: '0.5rem' }}
+              />
+              {uploading.license && <div style={{ fontSize: '0.8rem', color: 'var(--color-primary)', marginTop: 4 }}>Uploading...</div>}
             </div>
 
             <button
@@ -391,14 +444,30 @@ export default function KycPage() {
               </div>
             </div>
 
-            <div className="input-group" style={{ marginBottom: 'var(--sp-5)' }}>
-              <label className="input-label">Aadhaar Document URL</label>
-              <input
-                className="input"
-                placeholder="https://..."
-                value={urls.aadhaarUrl}
-                onChange={e => setUrls(u => ({ ...u, aadhaarUrl: e.target.value }))}
+            {urls.aadhaarUrl && (
+              <img
+                src={urls.aadhaarUrl}
+                alt="Aadhaar preview"
+                style={{
+                  width: '100%', height: 160, borderRadius: 'var(--radius-md)',
+                  objectFit: 'cover', display: 'block',
+                  marginBottom: 'var(--sp-4)',
+                  border: '1px solid var(--color-border)',
+                }}
               />
+            )}
+
+            <div className="input-group" style={{ marginBottom: 'var(--sp-5)' }}>
+              <label className="input-label">Upload Aadhaar Card</label>
+              <input
+                type="file"
+                accept="image/*"
+                className="input"
+                onChange={e => handleFileUpload('aadhaar', e)}
+                disabled={uploading.aadhaar}
+                style={{ padding: '0.5rem' }}
+              />
+              {uploading.aadhaar && <div style={{ fontSize: '0.8rem', color: 'var(--color-primary)', marginTop: 4 }}>Uploading...</div>}
             </div>
 
             <button

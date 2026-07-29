@@ -20,6 +20,7 @@ import { driversRouter } from './routes/api/v1/drivers';
 import { customersRouter } from './routes/api/v1/customers';
 import { adminRouter } from './routes/api/v1/admin';
 import { healthRouter } from './routes/api/v1/health';
+import { uploadRouter } from './routes/api/v1/upload';
 import { setupSocketIO } from './socket';
 
 async function bootstrap() {
@@ -79,6 +80,7 @@ async function bootstrap() {
   app.use('/api/v1/drivers', driversRouter);
   app.use('/api/v1/customers', customersRouter);
   app.use('/api/v1/admin', adminRouter);
+  app.use('/api/v1/upload', uploadRouter);
 
   // ─── Socket.io ────────────────────────────────────────────────────────────────
   const io = new SocketIOServer(server, {
