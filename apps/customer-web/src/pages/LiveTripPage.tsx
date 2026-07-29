@@ -89,7 +89,7 @@ export default function LiveTripPage() {
     
     const OLA_API_KEY = import.meta.env.VITE_OLA_MAPS_KEY;
     if (OLA_API_KEY) {
-      L.tileLayer(`https://api.olamaps.io/tiles/raster/v1/default-light-standard/{z}/{x}/{y}.png?api_key=${OLA_API_KEY}`, {
+      L.tileLayer(`https://api.olamaps.io/tiles/v1/styles/default-light-standard/tile/{z}/{x}/{y}.png?api_key=${OLA_API_KEY}`, {
         attribution: '© Ola Maps',
         maxZoom: 18,
       }).addTo(map);
