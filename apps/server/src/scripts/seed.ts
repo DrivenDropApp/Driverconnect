@@ -7,8 +7,8 @@ import { Driver } from '../models/Driver';
 import { Admin } from '../models/Admin';
 import { Booking } from '../models/Booking';
 
-// Pune, India coordinates as center
-const PUNE_CENTER = { lat: 18.5204, lng: 73.8567 };
+// Chhatrapati Sambhajinagar (Aurangabad), Maharashtra
+const CSN_CENTER = { lat: 19.8762, lng: 75.3433 };
 
 function randomOffset(range = 0.05): number {
   return (Math.random() - 0.5) * range * 2;
@@ -16,36 +16,36 @@ function randomOffset(range = 0.05): number {
 
 function randomLocation() {
   return {
-    lat: PUNE_CENTER.lat + randomOffset(0.08),
-    lng: PUNE_CENTER.lng + randomOffset(0.08),
+    lat: CSN_CENTER.lat + randomOffset(0.08),
+    lng: CSN_CENTER.lng + randomOffset(0.08),
   };
 }
 
 const DRIVER_NAMES = [
-  'Rajesh Kumar', 'Amit Singh', 'Suresh Patil', 'Vikram Yadav', 'Ravi Sharma',
-  'Manoj Gupta', 'Anil Verma', 'Deepak Nair', 'Sanjay Mehta', 'Arjun Reddy',
-  'Prakash Joshi', 'Ramesh Desai', 'Santosh Gaikwad', 'Nilesh More', 'Kiran Bhosale',
+  'Rajesh Patil', 'Amit Deshmukh', 'Suresh Gaikwad', 'Vikram Shinde', 'Ravi Jadhav',
+  'Manoj Kulkarni', 'Anil Dhamane', 'Deepak Bhor', 'Sanjay Wagh', 'Arjun Salunke',
+  'Prakash Munde', 'Ramesh Kamble', 'Santosh Pawar', 'Nilesh Bhalerao', 'Kiran Bankar',
 ];
 
 const VEHICLE_SKILLS = ['sedan', 'suv', 'hatchback', 'luxury'];
 
 const CUSTOMER_NAMES = [
-  { name: 'Priya Sharma', phone: '9876543210' },
-  { name: 'Anita Patel', phone: '9876543211' },
-  { name: 'Kavya Reddy', phone: '9876543212' },
-  { name: 'Meera Nair', phone: '9876543213' },
-  { name: 'Pooja Mehta', phone: '9876543214' },
+  { name: 'Priya Patil', phone: '9876543210' },
+  { name: 'Anita Deshmukh', phone: '9876543211' },
+  { name: 'Kavya Shinde', phone: '9876543212' },
+  { name: 'Meera Jadhav', phone: '9876543213' },
+  { name: 'Pooja Kulkarni', phone: '9876543214' },
 ];
 
-const PUNE_ADDRESSES = [
-  'Shivajinagar, Pune',
-  'Koregaon Park, Pune',
-  'Baner, Pune',
-  'Hinjewadi, Pune',
-  'Kothrud, Pune',
-  'Aundh, Pune',
-  'Viman Nagar, Pune',
-  'Camp, Pune',
+const CSN_ADDRESSES = [
+  'Jalna Road, Chhatrapati Sambhajinagar',
+  'Garkheda, Chhatrapati Sambhajinagar',
+  'Cidco, Chhatrapati Sambhajinagar',
+  'Bajaj Nagar, Chhatrapati Sambhajinagar',
+  'Prozone Mall, Chhatrapati Sambhajinagar',
+  'MIT College Area, Chhatrapati Sambhajinagar',
+  'Osmanpura, Chhatrapati Sambhajinagar',
+  'Nirala Bazar, Chhatrapati Sambhajinagar',
 ];
 
 async function seed() {
@@ -115,15 +115,15 @@ async function seed() {
       addresses: [
         {
           label: 'Home',
-          lat: PUNE_CENTER.lat + randomOffset(0.03),
-          lng: PUNE_CENTER.lng + randomOffset(0.03),
-          address: PUNE_ADDRESSES[Math.floor(Math.random() * PUNE_ADDRESSES.length)],
+          lat: CSN_CENTER.lat + randomOffset(0.03),
+          lng: CSN_CENTER.lng + randomOffset(0.03),
+          address: CSN_ADDRESSES[Math.floor(Math.random() * CSN_ADDRESSES.length)],
         },
         {
           label: 'Office',
-          lat: PUNE_CENTER.lat + randomOffset(0.03),
-          lng: PUNE_CENTER.lng + randomOffset(0.03),
-          address: PUNE_ADDRESSES[Math.floor(Math.random() * PUNE_ADDRESSES.length)],
+          lat: CSN_CENTER.lat + randomOffset(0.03),
+          lng: CSN_CENTER.lng + randomOffset(0.03),
+          address: CSN_ADDRESSES[Math.floor(Math.random() * CSN_ADDRESSES.length)],
         },
       ],
       vehicles: [
@@ -150,8 +150,8 @@ async function seed() {
     await Booking.create({
       ...b,
       type: 'local',
-      pickup: { ...pickup, address: PUNE_ADDRESSES[Math.floor(Math.random() * PUNE_ADDRESSES.length)] },
-      drop: { ...drop, address: PUNE_ADDRESSES[Math.floor(Math.random() * PUNE_ADDRESSES.length)] },
+      pickup: { ...pickup, address: CSN_ADDRESSES[Math.floor(Math.random() * CSN_ADDRESSES.length)] },
+      drop: { ...drop, address: CSN_ADDRESSES[Math.floor(Math.random() * CSN_ADDRESSES.length)] },
       fare: { base: 50, distance: 140, time: 30, tolls: 0, total: 220, currency: 'INR' },
       distance: 10,
       duration: 20,

@@ -84,7 +84,7 @@ export default function LiveTripPage() {
     const mapEl = document.getElementById('live-map');
     if (!mapEl) return;
 
-    const center = booking.pickup || { lat: 18.5204, lng: 73.8567 };
+    const center = booking.pickup || { lat: 19.8762, lng: 75.3433 }; // Chhatrapati Sambhajinagar
     const map = L.map(mapEl, { zoomControl: false }).setView([center.lat, center.lng], 14);
     
     const OLA_API_KEY = import.meta.env.VITE_OLA_MAPS_KEY;

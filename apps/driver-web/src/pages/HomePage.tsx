@@ -201,7 +201,7 @@ export default function HomePage() {
           );
           location = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         } catch {
-          location = { lat: 18.5204, lng: 73.8567 };
+          location = { lat: 19.8762, lng: 75.3433 }; // Chhatrapati Sambhajinagar
         }
       }
 

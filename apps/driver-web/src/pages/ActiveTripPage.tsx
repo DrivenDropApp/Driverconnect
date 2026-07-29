@@ -53,7 +53,7 @@ export default function ActiveTripPage() {
     const mapEl = document.getElementById('trip-map');
     if (!mapEl) return;
 
-    const map = L.map(mapEl, { zoomControl: false }).setView([18.5204, 73.8567], 14);
+    const map = L.map(mapEl, { zoomControl: false }).setView([19.8762, 75.3433], 14); // Chhatrapati Sambhajinagar
     
     const OLA_API_KEY = import.meta.env.VITE_OLA_MAPS_KEY;
     if (OLA_API_KEY) {

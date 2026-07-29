@@ -104,6 +104,17 @@ export default function HomePage() {
 
   useEffect(() => { loadActiveBooking(); }, []);
 
+  // Request location permission on home screen load (so it's ready when booking)
+  useEffect(() => {
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        () => {}, // granted — no action needed
+        () => {}, // denied — silently ignore; user will be prompted again in booking
+        { timeout: 5000, maximumAge: 60000 }
+      );
+    }
+  }, []);
+
   const loadActiveBooking = async () => {
     try {
       const res: any = await api.getActiveBooking();

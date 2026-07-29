@@ -7,7 +7,22 @@ import { fetchAutocomplete, fetchPlaceDetails, fetchReverseGeocode } from '../li
 
 declare global { interface Window { L: any; } }
 
-const PUNE_CENTER = { lat: 18.5204, lng: 73.8567 };
+// ───Chhatrapati Sambhajinagar (Aurangabad) service area ─────────────────────
+const CITY_CENTER = { lat: 19.8762, lng: 75.3433 };
+// Approximate bounding box (~25km radius)
+const SERVICE_BOUNDS = {
+  minLat: 19.62,
+  maxLat: 20.13,
+  minLng: 75.09,
+  maxLng: 75.60,
+};
+
+function isInServiceArea(lat: number, lng: number): boolean {
+  return (
+    lat >= SERVICE_BOUNDS.minLat && lat <= SERVICE_BOUNDS.maxLat &&
+    lng >= SERVICE_BOUNDS.minLng && lng <= SERVICE_BOUNDS.maxLng
+  );
+}
 
 const TRIP_TYPES = [
   { type: 'local',      name: 'Local',      desc: '₹50 base + ₹14/km' },
@@ -76,9 +91,22 @@ export default function BookingPage() {
 
   const pickupTimeoutRef = useRef<any>(null);
   const dropTimeoutRef = useRef<any>(null);
+  const [gettingLocation, setGettingLocation] = useState(false);
+  const [pickupFocused, setPickupFocused] = useState(false);
 
   useEffect(() => {
     if (step === 'location') setTimeout(initMap, 100);
+  }, [step]);
+
+  // Request location permission as soon as map step opens
+  useEffect(() => {
+    if (step === 'location') {
+      navigator.geolocation?.getCurrentPosition(
+        () => {},
+        () => {},
+        { timeout: 5000 }
+      );
+    }
   }, [step]);
 
   const pickupStateRef = useRef<any>(null);
@@ -89,7 +117,7 @@ export default function BookingPage() {
     if (!L || mapRef.current) return;
     const mapEl = document.getElementById('booking-map');
     if (!mapEl) return;
-    const map = L.map(mapEl, { zoomControl: false }).setView([PUNE_CENTER.lat, PUNE_CENTER.lng], 13);
+    const map = L.map(mapEl, { zoomControl: false }).setView([CITY_CENTER.lat, CITY_CENTER.lng], 13);
     const OLA_API_KEY = import.meta.env.VITE_OLA_MAPS_KEY;
     if (OLA_API_KEY) {
       L.tileLayer(`https://api.olamaps.io/tiles/v1/styles/default-light-standard/{z}/{x}/{y}.png?api_key=${OLA_API_KEY}`, {
@@ -100,43 +128,52 @@ export default function BookingPage() {
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
     }
     L.control.zoom({ position: 'bottomright' }).addTo(map);
-    map.on('click', async (e: any) => {
-      const { lat, lng } = e.latlng;
-      if (!pickupStateRef.current) {
+    const placeMarker = async (lat: number, lng: number, forPickup: boolean) => {
+      if (!isInServiceArea(lat, lng)) {
+        toast.error('📍 Location not serviceable. Please try another location within Chhatrapati Sambhajinagar.');
+        return;
+      }
+      const address = await fetchReverseGeocode(lat, lng);
+      if (forPickup) {
         setPickup({ lat, lng });
-        const address = await fetchReverseGeocode(lat, lng);
         setPickupText(address);
         if (pickupMarkerRef.current) map.removeLayer(pickupMarkerRef.current);
         pickupMarkerRef.current = L.marker([lat, lng], { draggable: true })
-          .addTo(map)
-          .bindPopup('Pickup')
-          .openPopup();
-
-        pickupMarkerRef.current.on('dragend', async (event: any) => {
-          const marker = event.target;
-          const position = marker.getLatLng();
-          const addr = await fetchReverseGeocode(position.lat, position.lng);
-          setPickup({ lat: position.lat, lng: position.lng });
+          .addTo(map).bindPopup('Pickup').openPopup();
+        pickupMarkerRef.current.on('dragend', async (ev: any) => {
+          const pos = ev.target.getLatLng();
+          if (!isInServiceArea(pos.lat, pos.lng)) {
+            toast.error('📍 Location not serviceable. Please try another location.');
+            ev.target.setLatLng([lat, lng]);
+            return;
+          }
+          const addr = await fetchReverseGeocode(pos.lat, pos.lng);
+          setPickup({ lat: pos.lat, lng: pos.lng });
           setPickupText(addr);
         });
       } else {
         setDrop({ lat, lng });
-        const address = await fetchReverseGeocode(lat, lng);
         setDropText(address);
         if (dropMarkerRef.current) map.removeLayer(dropMarkerRef.current);
         dropMarkerRef.current = L.marker([lat, lng], { draggable: true })
-          .addTo(map)
-          .bindPopup('Drop')
-          .openPopup();
-
-        dropMarkerRef.current.on('dragend', async (event: any) => {
-          const marker = event.target;
-          const position = marker.getLatLng();
-          const addr = await fetchReverseGeocode(position.lat, position.lng);
-          setDrop({ lat: position.lat, lng: position.lng });
+          .addTo(map).bindPopup('Drop').openPopup();
+        dropMarkerRef.current.on('dragend', async (ev: any) => {
+          const pos = ev.target.getLatLng();
+          if (!isInServiceArea(pos.lat, pos.lng)) {
+            toast.error('📍 Location not serviceable. Please try another location.');
+            ev.target.setLatLng([lat, lng]);
+            return;
+          }
+          const addr = await fetchReverseGeocode(pos.lat, pos.lng);
+          setDrop({ lat: pos.lat, lng: pos.lng });
           setDropText(addr);
         });
       }
+    };
+
+    map.on('click', async (e: any) => {
+      const { lat, lng } = e.latlng;
+      await placeMarker(lat, lng, !pickupStateRef.current);
     });
     mapRef.current = map;
   };
@@ -171,29 +208,74 @@ export default function BookingPage() {
     }, 400);
   };
 
+  const handleUseCurrentLocation = async () => {
+    setPickupSuggestions([]);
+    setGettingLocation(true);
+    try {
+      const pos = await new Promise<GeolocationPosition>((resolve, reject) =>
+        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 8000 })
+      );
+      const { latitude: lat, longitude: lng } = pos.coords;
+      if (!isInServiceArea(lat, lng)) {
+        toast.error('📍 Your current location is not within our service area (Chhatrapati Sambhajinagar).');
+        return;
+      }
+      const address = await fetchReverseGeocode(lat, lng);
+      setPickup({ lat, lng });
+      setPickupText(address);
+      if (mapRef.current) {
+        mapRef.current.setView([lat, lng], 15);
+        if (pickupMarkerRef.current) mapRef.current.removeLayer(pickupMarkerRef.current);
+        const L = (window as any).L;
+        pickupMarkerRef.current = L.marker([lat, lng], { draggable: true })
+          .addTo(mapRef.current).bindPopup('📍 You are here').openPopup();
+        pickupMarkerRef.current.on('dragend', async (event: any) => {
+          const pos2 = event.target.getLatLng();
+          if (!isInServiceArea(pos2.lat, pos2.lng)) {
+            toast.error('📍 Location not serviceable. Please try another location.');
+            event.target.setLatLng([lat, lng]);
+            return;
+          }
+          const addr = await fetchReverseGeocode(pos2.lat, pos2.lng);
+          setPickup({ lat: pos2.lat, lng: pos2.lng });
+          setPickupText(addr);
+        });
+      }
+    } catch {
+      toast.error('Could not get your location. Please enable location permissions.');
+    } finally {
+      setGettingLocation(false);
+    }
+  };
+
   const handleSelectPickup = async (suggestion: any) => {
     setPickupSuggestions([]);
     const details = await fetchPlaceDetails(suggestion.place_id);
     if (!details) return;
+
+    if (!isInServiceArea(details.lat, details.lng)) {
+      toast.error('📍 Location not serviceable. Please try another location within Chhatrapati Sambhajinagar.');
+      return;
+    }
 
     setPickup({ lat: details.lat, lng: details.lng });
     setPickupText(details.address || suggestion.description);
 
     if (mapRef.current) {
       mapRef.current.setView([details.lat, details.lng], 15);
-      
       if (pickupMarkerRef.current) mapRef.current.removeLayer(pickupMarkerRef.current);
       const L = (window as any).L;
       pickupMarkerRef.current = L.marker([details.lat, details.lng], { draggable: true })
-        .addTo(mapRef.current)
-        .bindPopup('Pickup')
-        .openPopup();
-
+        .addTo(mapRef.current).bindPopup('Pickup').openPopup();
       pickupMarkerRef.current.on('dragend', async (event: any) => {
-        const marker = event.target;
-        const position = marker.getLatLng();
-        const address = await fetchReverseGeocode(position.lat, position.lng);
-        setPickup({ lat: position.lat, lng: position.lng });
+        const pos = event.target.getLatLng();
+        if (!isInServiceArea(pos.lat, pos.lng)) {
+          toast.error('📍 Location not serviceable.');
+          event.target.setLatLng([details.lat, details.lng]);
+          return;
+        }
+        const address = await fetchReverseGeocode(pos.lat, pos.lng);
+        setPickup({ lat: pos.lat, lng: pos.lng });
         setPickupText(address);
       });
     }
@@ -204,24 +286,29 @@ export default function BookingPage() {
     const details = await fetchPlaceDetails(suggestion.place_id);
     if (!details) return;
 
+    if (!isInServiceArea(details.lat, details.lng)) {
+      toast.error('📍 Location not serviceable. Please try another location within Chhatrapati Sambhajinagar.');
+      return;
+    }
+
     setDrop({ lat: details.lat, lng: details.lng });
     setDropText(details.address || suggestion.description);
 
     if (mapRef.current) {
       mapRef.current.setView([details.lat, details.lng], 15);
-      
       if (dropMarkerRef.current) mapRef.current.removeLayer(dropMarkerRef.current);
       const L = (window as any).L;
       dropMarkerRef.current = L.marker([details.lat, details.lng], { draggable: true })
-        .addTo(mapRef.current)
-        .bindPopup('Drop')
-        .openPopup();
-
+        .addTo(mapRef.current).bindPopup('Drop').openPopup();
       dropMarkerRef.current.on('dragend', async (event: any) => {
-        const marker = event.target;
-        const position = marker.getLatLng();
-        const address = await fetchReverseGeocode(position.lat, position.lng);
-        setDrop({ lat: position.lat, lng: position.lng });
+        const pos = event.target.getLatLng();
+        if (!isInServiceArea(pos.lat, pos.lng)) {
+          toast.error('📍 Location not serviceable.');
+          event.target.setLatLng([details.lat, details.lng]);
+          return;
+        }
+        const address = await fetchReverseGeocode(pos.lat, pos.lng);
+        setDrop({ lat: pos.lat, lng: pos.lng });
         setDropText(address);
       });
     }
@@ -359,9 +446,12 @@ export default function BookingPage() {
               <div style={{ position: 'relative' }}>
                 <div style={{ fontSize: '0.65rem', color: 'var(--color-primary)', fontWeight: 700, marginBottom: 4 }}>PICKUP LOCATION</div>
                 <input
+                  id="pickup-input"
                   type="text"
                   value={pickupText}
                   onChange={(e) => handlePickupChange(e.target.value)}
+                  onFocus={() => setPickupFocused(true)}
+                  onBlur={() => setTimeout(() => setPickupFocused(false), 180)}
                   placeholder="Enter pickup address or tap/drag pin"
                   style={{
                     width: '100%',
@@ -380,7 +470,8 @@ export default function BookingPage() {
                   </div>
                 )}
                 
-                {pickupSuggestions.length > 0 && (
+                {/* Show dropdown when focused — current location option always first */}
+                {pickupFocused && (
                   <div style={{
                     position: 'absolute',
                     top: '100%',
@@ -391,10 +482,31 @@ export default function BookingPage() {
                     borderRadius: 'var(--radius-md)',
                     boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
                     zIndex: 9999,
-                    maxHeight: '180px',
+                    maxHeight: '220px',
                     overflowY: 'auto',
-                    marginTop: '4px'
+                    marginTop: '4px',
                   }}>
+                    {/* Current Location option */}
+                    <div
+                      onClick={handleUseCurrentLocation}
+                      style={{
+                        padding: '0.625rem 0.75rem',
+                        cursor: gettingLocation ? 'wait' : 'pointer',
+                        borderBottom: '1px solid var(--color-border)',
+                        fontSize: '0.78rem',
+                        color: 'var(--color-primary)',
+                        fontWeight: 600,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        background: 'rgba(13,148,136,0.05)',
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(13,148,136,0.12)'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(13,148,136,0.05)'}
+                    >
+                      <span style={{ fontSize: '1rem' }}>📍</span>
+                      {gettingLocation ? 'Getting your location...' : 'Use current location'}
+                    </div>
                     {pickupSuggestions.map((suggestion: any) => (
                       <div
                         key={suggestion.place_id}
