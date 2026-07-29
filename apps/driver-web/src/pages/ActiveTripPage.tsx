@@ -55,10 +55,10 @@ export default function ActiveTripPage() {
 
     const map = L.map(mapEl, { zoomControl: false }).setView([18.5204, 73.8567], 14);
     
-    const mapboxToken = import.meta.env.VITE_MAPBOX_TOKEN;
-    if (mapboxToken) {
-      L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/256/{z}/{x}/{y}@2x?access_token=${mapboxToken}`, {
-        attribution: '© Mapbox',
+    const OLA_API_KEY = import.meta.env.VITE_OLA_MAPS_KEY;
+    if (OLA_API_KEY) {
+      L.tileLayer(`https://api.olamaps.io/tiles/raster/v1/default-light-standard/{z}/{x}/{y}.png?api_key=${OLA_API_KEY}`, {
+        attribution: '© Ola Maps',
         maxZoom: 18,
       }).addTo(map);
     } else {

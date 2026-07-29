@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
 import toast from 'react-hot-toast';
 import { api } from '../lib/api';
+import { fetchAutocomplete, fetchPlaceDetails, fetchReverseGeocode } from '../lib/olaMaps';
 
 declare global { interface Window { L: any; } }
 
@@ -58,6 +59,12 @@ export default function BookingPage() {
   const [drop, setDrop] = useState<any>(null);
   const [pickupText, setPickupText] = useState('');
   const [dropText, setDropText] = useState('');
+
+  const [pickupSuggestions, setPickupSuggestions] = useState<any[]>([]);
+  const [dropSuggestions, setDropSuggestions] = useState<any[]>([]);
+  const [searchingPickup, setSearchingPickup] = useState(false);
+  const [searchingDrop, setSearchingDrop] = useState(false);
+
   const [fare, setFare] = useState<any>(null);
   const [distance, setDistance] = useState<number>(0);
   const [loading, setLoading] = useState(false);
@@ -66,6 +73,9 @@ export default function BookingPage() {
   const pickupMarkerRef = useRef<any>(null);
   const dropMarkerRef = useRef<any>(null);
   const idempotencyKey = useRef(uuidv4());
+
+  const pickupTimeoutRef = useRef<any>(null);
+  const dropTimeoutRef = useRef<any>(null);
 
   useEffect(() => {
     if (step === 'location') setTimeout(initMap, 100);
@@ -80,35 +90,141 @@ export default function BookingPage() {
     const mapEl = document.getElementById('booking-map');
     if (!mapEl) return;
     const map = L.map(mapEl, { zoomControl: false }).setView([PUNE_CENTER.lat, PUNE_CENTER.lng], 13);
-    const mapboxToken = import.meta.env.VITE_MAPBOX_TOKEN;
-    if (mapboxToken) {
-      L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/256/{z}/{x}/{y}@2x?access_token=${mapboxToken}`, {
-        attribution: '© Mapbox',
+    const OLA_API_KEY = import.meta.env.VITE_OLA_MAPS_KEY;
+    if (OLA_API_KEY) {
+      L.tileLayer(`https://api.olamaps.io/tiles/raster/v1/default-light-standard/{z}/{x}/{y}.png?api_key=${OLA_API_KEY}`, {
+        attribution: '© Ola Maps',
         maxZoom: 18,
       }).addTo(map);
     } else {
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
     }
     L.control.zoom({ position: 'bottomright' }).addTo(map);
-    map.on('click', (e: any) => {
+    map.on('click', async (e: any) => {
       const { lat, lng } = e.latlng;
       if (!pickupStateRef.current) {
         setPickup({ lat, lng });
-        setPickupText(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+        const address = await fetchReverseGeocode(lat, lng);
+        setPickupText(address);
         if (pickupMarkerRef.current) map.removeLayer(pickupMarkerRef.current);
-        pickupMarkerRef.current = L.circleMarker([lat, lng], {
-          radius: 9, fillColor: '#0D9488', fillOpacity: 1, color: 'white', weight: 2.5,
-        }).addTo(map).bindPopup('Pickup').openPopup();
+        pickupMarkerRef.current = L.marker([lat, lng], { draggable: true })
+          .addTo(map)
+          .bindPopup('Pickup')
+          .openPopup();
+
+        pickupMarkerRef.current.on('dragend', async (event: any) => {
+          const marker = event.target;
+          const position = marker.getLatLng();
+          const addr = await fetchReverseGeocode(position.lat, position.lng);
+          setPickup({ lat: position.lat, lng: position.lng });
+          setPickupText(addr);
+        });
       } else {
         setDrop({ lat, lng });
-        setDropText(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+        const address = await fetchReverseGeocode(lat, lng);
+        setDropText(address);
         if (dropMarkerRef.current) map.removeLayer(dropMarkerRef.current);
-        dropMarkerRef.current = L.circleMarker([lat, lng], {
-          radius: 9, fillColor: '#EF4444', fillOpacity: 1, color: 'white', weight: 2.5,
-        }).addTo(map).bindPopup('Drop').openPopup();
+        dropMarkerRef.current = L.marker([lat, lng], { draggable: true })
+          .addTo(map)
+          .bindPopup('Drop')
+          .openPopup();
+
+        dropMarkerRef.current.on('dragend', async (event: any) => {
+          const marker = event.target;
+          const position = marker.getLatLng();
+          const addr = await fetchReverseGeocode(position.lat, position.lng);
+          setDrop({ lat: position.lat, lng: position.lng });
+          setDropText(addr);
+        });
       }
     });
     mapRef.current = map;
+  };
+
+  const handlePickupChange = (value: string) => {
+    setPickupText(value);
+    if (pickupTimeoutRef.current) clearTimeout(pickupTimeoutRef.current);
+    if (!value.trim()) {
+      setPickupSuggestions([]);
+      return;
+    }
+    pickupTimeoutRef.current = setTimeout(async () => {
+      setSearchingPickup(true);
+      const suggestions = await fetchAutocomplete(value);
+      setPickupSuggestions(suggestions);
+      setSearchingPickup(false);
+    }, 400);
+  };
+
+  const handleDropChange = (value: string) => {
+    setDropText(value);
+    if (dropTimeoutRef.current) clearTimeout(dropTimeoutRef.current);
+    if (!value.trim()) {
+      setDropSuggestions([]);
+      return;
+    }
+    dropTimeoutRef.current = setTimeout(async () => {
+      setSearchingDrop(true);
+      const suggestions = await fetchAutocomplete(value);
+      setDropSuggestions(suggestions);
+      setSearchingDrop(false);
+    }, 400);
+  };
+
+  const handleSelectPickup = async (suggestion: any) => {
+    setPickupSuggestions([]);
+    const details = await fetchPlaceDetails(suggestion.place_id);
+    if (!details) return;
+
+    setPickup({ lat: details.lat, lng: details.lng });
+    setPickupText(details.address || suggestion.description);
+
+    if (mapRef.current) {
+      mapRef.current.setView([details.lat, details.lng], 15);
+      
+      if (pickupMarkerRef.current) mapRef.current.removeLayer(pickupMarkerRef.current);
+      const L = (window as any).L;
+      pickupMarkerRef.current = L.marker([details.lat, details.lng], { draggable: true })
+        .addTo(mapRef.current)
+        .bindPopup('Pickup')
+        .openPopup();
+
+      pickupMarkerRef.current.on('dragend', async (event: any) => {
+        const marker = event.target;
+        const position = marker.getLatLng();
+        const address = await fetchReverseGeocode(position.lat, position.lng);
+        setPickup({ lat: position.lat, lng: position.lng });
+        setPickupText(address);
+      });
+    }
+  };
+
+  const handleSelectDrop = async (suggestion: any) => {
+    setDropSuggestions([]);
+    const details = await fetchPlaceDetails(suggestion.place_id);
+    if (!details) return;
+
+    setDrop({ lat: details.lat, lng: details.lng });
+    setDropText(details.address || suggestion.description);
+
+    if (mapRef.current) {
+      mapRef.current.setView([details.lat, details.lng], 15);
+      
+      if (dropMarkerRef.current) mapRef.current.removeLayer(dropMarkerRef.current);
+      const L = (window as any).L;
+      dropMarkerRef.current = L.marker([details.lat, details.lng], { draggable: true })
+        .addTo(mapRef.current)
+        .bindPopup('Drop')
+        .openPopup();
+
+      dropMarkerRef.current.on('dragend', async (event: any) => {
+        const marker = event.target;
+        const position = marker.getLatLng();
+        const address = await fetchReverseGeocode(position.lat, position.lng);
+        setDrop({ lat: position.lat, lng: position.lng });
+        setDropText(address);
+      });
+    }
   };
 
   const handleEstimateFare = async () => {
@@ -150,6 +266,8 @@ export default function BookingPage() {
 
   const resetLocations = () => {
     setPickup(null); setDrop(null);
+    setPickupText(''); setDropText('');
+    setPickupSuggestions([]); setDropSuggestions([]);
     if (pickupMarkerRef.current && mapRef.current) mapRef.current.removeLayer(pickupMarkerRef.current);
     if (dropMarkerRef.current && mapRef.current) mapRef.current.removeLayer(dropMarkerRef.current);
     pickupMarkerRef.current = null; dropMarkerRef.current = null;
@@ -236,28 +354,129 @@ export default function BookingPage() {
                 : 'Both locations set'}
             </p>
 
-            <div style={{ display: 'flex', gap: '0.625rem', marginBottom: '0.875rem' }}>
-              <div style={{
-                flex: 1, padding: '0.625rem 0.75rem',
-                background: 'var(--color-surface-2)',
-                borderRadius: 'var(--radius-md)',
-                border: '1px solid rgba(13,148,136,0.3)',
-              }}>
-                <div style={{ fontSize: '0.65rem', color: 'var(--color-primary)', fontWeight: 700, marginBottom: 2 }}>PICKUP</div>
-                <div style={{ fontSize: '0.8rem', color: pickup ? 'var(--color-text-primary)' : 'var(--color-text-disabled)' }}>
-                  {pickup ? `${pickup.lat.toFixed(4)}, ${pickup.lng.toFixed(4)}` : 'Tap map'}
-                </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '0.875rem', position: 'relative' }}>
+              {/* Pickup Location Search */}
+              <div style={{ position: 'relative' }}>
+                <div style={{ fontSize: '0.65rem', color: 'var(--color-primary)', fontWeight: 700, marginBottom: 4 }}>PICKUP LOCATION</div>
+                <input
+                  type="text"
+                  value={pickupText}
+                  onChange={(e) => handlePickupChange(e.target.value)}
+                  placeholder="Enter pickup address or tap/drag pin"
+                  style={{
+                    width: '100%',
+                    padding: '0.625rem 0.75rem',
+                    background: 'var(--color-surface-2)',
+                    color: 'var(--color-text-primary)',
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid rgba(13,148,136,0.3)',
+                    fontSize: '0.8rem',
+                    outline: 'none',
+                  }}
+                />
+                {searchingPickup && (
+                  <div style={{ position: 'absolute', right: 10, top: 28, fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
+                    Searching...
+                  </div>
+                )}
+                
+                {pickupSuggestions.length > 0 && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    right: 0,
+                    background: 'var(--color-surface)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: 'var(--radius-md)',
+                    boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
+                    zIndex: 9999,
+                    maxHeight: '180px',
+                    overflowY: 'auto',
+                    marginTop: '4px'
+                  }}>
+                    {pickupSuggestions.map((suggestion: any) => (
+                      <div
+                        key={suggestion.place_id}
+                        onClick={() => handleSelectPickup(suggestion)}
+                        style={{
+                          padding: '0.625rem 0.75rem',
+                          cursor: 'pointer',
+                          borderBottom: '1px solid var(--color-border)',
+                          fontSize: '0.78rem',
+                          color: 'var(--color-text-primary)',
+                          textAlign: 'left'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--color-surface-2)'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                      >
+                        {suggestion.description}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-              <div style={{
-                flex: 1, padding: '0.625rem 0.75rem',
-                background: 'var(--color-surface-2)',
-                borderRadius: 'var(--radius-md)',
-                border: '1px solid rgba(239,68,68,0.3)',
-              }}>
-                <div style={{ fontSize: '0.65rem', color: '#EF4444', fontWeight: 700, marginBottom: 2 }}>DROP</div>
-                <div style={{ fontSize: '0.8rem', color: drop ? 'var(--color-text-primary)' : 'var(--color-text-disabled)' }}>
-                  {drop ? `${drop.lat.toFixed(4)}, ${drop.lng.toFixed(4)}` : 'Tap map'}
-                </div>
+
+              {/* Drop Location Search */}
+              <div style={{ position: 'relative' }}>
+                <div style={{ fontSize: '0.65rem', color: '#EF4444', fontWeight: 700, marginBottom: 4 }}>DROP LOCATION</div>
+                <input
+                  type="text"
+                  value={dropText}
+                  onChange={(e) => handleDropChange(e.target.value)}
+                  placeholder="Enter drop address or tap/drag pin"
+                  style={{
+                    width: '100%',
+                    padding: '0.625rem 0.75rem',
+                    background: 'var(--color-surface-2)',
+                    color: 'var(--color-text-primary)',
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid rgba(239,68,68,0.3)',
+                    fontSize: '0.8rem',
+                    outline: 'none',
+                  }}
+                />
+                {searchingDrop && (
+                  <div style={{ position: 'absolute', right: 10, top: 28, fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
+                    Searching...
+                  </div>
+                )}
+
+                {dropSuggestions.length > 0 && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    right: 0,
+                    background: 'var(--color-surface)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: 'var(--radius-md)',
+                    boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
+                    zIndex: 9999,
+                    maxHeight: '180px',
+                    overflowY: 'auto',
+                    marginTop: '4px'
+                  }}>
+                    {dropSuggestions.map((suggestion: any) => (
+                      <div
+                        key={suggestion.place_id}
+                        onClick={() => handleSelectDrop(suggestion)}
+                        style={{
+                          padding: '0.625rem 0.75rem',
+                          cursor: 'pointer',
+                          borderBottom: '1px solid var(--color-border)',
+                          fontSize: '0.78rem',
+                          color: 'var(--color-text-primary)',
+                          textAlign: 'left'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--color-surface-2)'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                      >
+                        {suggestion.description}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
