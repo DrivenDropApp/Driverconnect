@@ -183,15 +183,19 @@ router.get('/:id', requireAuth, async (req: Request, res: Response) => {
       return;
     }
 
-    // Customers can only see their own bookings; drivers can see assigned ones; admins see all
+    // Customers can only see their own bookings; drivers can see assigned ones OR ones searching; admins see all
     const { userId, role } = req.user!;
     if (role === 'customer' && booking.customerId.toString() !== userId) {
       res.status(403).json({ error: 'forbidden', message: 'Access denied' });
       return;
     }
-    if (role === 'driver' && booking.driverId?.toString() !== userId) {
-      res.status(403).json({ error: 'forbidden', message: 'Access denied' });
-      return;
+    if (role === 'driver') {
+      const isAssigned = booking.driverId?.toString() === userId;
+      const isSearching = booking.status === 'searching';
+      if (!isAssigned && !isSearching) {
+        res.status(403).json({ error: 'forbidden', message: 'Access denied' });
+        return;
+      }
     }
 
     res.json(booking);

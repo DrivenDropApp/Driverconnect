@@ -71,6 +71,9 @@ export default function BookingPage() {
     if (step === 'location') setTimeout(initMap, 100);
   }, [step]);
 
+  const pickupStateRef = useRef<any>(null);
+  pickupStateRef.current = pickup;
+
   const initMap = () => {
     const L = (window as any).L;
     if (!L || mapRef.current) return;
@@ -81,7 +84,7 @@ export default function BookingPage() {
     L.control.zoom({ position: 'bottomright' }).addTo(map);
     map.on('click', (e: any) => {
       const { lat, lng } = e.latlng;
-      if (!pickup) {
+      if (!pickupStateRef.current) {
         setPickup({ lat, lng });
         setPickupText(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
         if (pickupMarkerRef.current) map.removeLayer(pickupMarkerRef.current);
