@@ -41,6 +41,12 @@ export const driverApi = {
 
   logout: () => request('/auth/logout', { method: 'POST' }),
 
+  completeDriverProfile: (data: {
+    firstName: string; lastName: string; gender: string;
+    email?: string; dateOfBirth?: string; alternatePhone?: string; languages?: string[];
+  }) =>
+    request('/auth/driver/complete-profile', { method: 'POST', body: JSON.stringify(data) }),
+
   getProfile: () => request('/drivers/profile'),
 
   updateProfile: (data: any) =>

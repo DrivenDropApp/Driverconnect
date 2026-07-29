@@ -52,6 +52,12 @@ export const api = {
 
   getMe: () => request('/auth/me'),
 
+  completeProfile: (name: string, email: string) =>
+    request('/auth/customer/complete-profile', {
+      method: 'POST',
+      body: JSON.stringify({ name, email }),
+    }),
+
   // Profile
   getProfile: () => request('/customers/profile'),
 

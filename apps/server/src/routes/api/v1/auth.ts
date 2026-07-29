@@ -29,14 +29,16 @@ router.post('/otp/send', otpLimiter, validate(sendOtpSchema), async (req: Reques
     if (role === 'customer') {
       let user = await User.findOne({ phone }).select('+otp +otpExpiresAt');
       if (!user) {
-        user = new User({ phone, name: 'New User', role: 'customer' });
+        // Create a minimal placeholder — name will be filled after profile step
+        user = new User({ phone, name: '__pending__', role: 'customer' });
       }
       await (user as any).setOtp(otp);
       await user.save();
     } else {
       let driver = await Driver.findOne({ phone }).select('+otp +otpExpiresAt');
       if (!driver) {
-        driver = new Driver({ phone, name: 'New Driver', role: 'driver' });
+        // Create a minimal placeholder — name will be filled after profile step
+        driver = new Driver({ phone, name: '__pending__', role: 'driver' });
       }
       await (driver as any).setOtp(otp);
       await driver.save();
@@ -84,6 +86,9 @@ router.post('/customer/login', authLimiter, validate(loginSchema), async (req: R
       return;
     }
 
+    // Detect first-time user (profile not completed yet)
+    const isNewUser = user.name === '__pending__';
+
     const accessToken = generateAccessToken(user._id.toString(), 'customer');
     const refreshToken = generateRefreshToken(user._id.toString(), 'customer');
 
@@ -97,12 +102,51 @@ router.post('/customer/login', authLimiter, validate(loginSchema), async (req: R
     delete userObj.otpExpiresAt;
     delete userObj.refreshToken;
 
-    res.json({ accessToken, refreshToken, user: userObj, role: 'customer' });
+    res.json({ accessToken, refreshToken, user: userObj, role: 'customer', isNewUser });
   } catch (error) {
     logger.error({ error }, 'Customer login failed');
     res.status(500).json({ error: 'login_failed', message: 'Login failed' });
   }
 });
+
+// ─── Customer Complete Profile (first-time signup) ────────────────────────────
+
+const completeProfileSchema = z.object({
+  name: z.string().min(2, 'Name must be at least 2 characters').max(60),
+  email: z.string().email('Enter a valid email address').optional().or(z.literal('')),
+});
+
+router.post('/customer/complete-profile', requireAuth, validate(completeProfileSchema), async (req: Request, res: Response) => {
+  const { userId } = req.user!;
+  const { name, email } = req.body;
+
+  try {
+    const user = await User.findById(userId);
+    if (!user) {
+      res.status(404).json({ error: 'not_found', message: 'User not found' });
+      return;
+    }
+
+    user.name = name.trim();
+    if (email && email.trim()) {
+      (user as any).email = email.trim().toLowerCase();
+    }
+    await user.save();
+
+    logger.info({ userId, name }, 'Customer profile completed');
+
+    const userObj = user.toObject() as any;
+    delete userObj.otp;
+    delete userObj.otpExpiresAt;
+    delete userObj.refreshToken;
+
+    res.json({ user: userObj });
+  } catch (error) {
+    logger.error({ error }, 'Profile completion failed');
+    res.status(500).json({ error: 'profile_failed', message: 'Failed to save profile' });
+  }
+});
+
 
 // ─── Driver Login ─────────────────────────────────────────────────────────────
 
@@ -128,6 +172,9 @@ router.post('/driver/login', authLimiter, validate(loginSchema), async (req: Req
       return;
     }
 
+    // Detect first-time driver (profile not completed yet)
+    const isNewUser = driver.name === '__pending__';
+
     const accessToken = generateAccessToken(driver._id.toString(), 'driver');
     const refreshToken = generateRefreshToken(driver._id.toString(), 'driver');
 
@@ -141,12 +188,58 @@ router.post('/driver/login', authLimiter, validate(loginSchema), async (req: Req
     delete driverObj.otpExpiresAt;
     delete driverObj.refreshToken;
 
-    res.json({ accessToken, refreshToken, driver: driverObj, role: 'driver' });
+    res.json({ accessToken, refreshToken, driver: driverObj, role: 'driver', isNewUser });
   } catch (error) {
     logger.error({ error }, 'Driver login failed');
     res.status(500).json({ error: 'login_failed', message: 'Login failed' });
   }
 });
+
+// ─── Driver Complete Profile (first-time signup) ──────────────────────────────
+
+const driverProfileSchema = z.object({
+  firstName:     z.string().min(1).max(40),
+  lastName:      z.string().min(1).max(40),
+  gender:        z.enum(['male', 'female', 'other']),
+  email:         z.string().email().optional().or(z.literal('')),
+  dateOfBirth:   z.string().optional(),   // ISO date string
+  alternatePhone: z.string().max(15).optional().or(z.literal('')),
+  languages:     z.array(z.string()).optional(),
+});
+
+router.post('/driver/complete-profile', requireAuth, validate(driverProfileSchema), async (req: Request, res: Response) => {
+  const { userId } = req.user!;
+  const { firstName, lastName, gender, email, dateOfBirth, alternatePhone, languages } = req.body;
+
+  try {
+    const driver = await Driver.findById(userId);
+    if (!driver) {
+      res.status(404).json({ error: 'not_found', message: 'Driver not found' });
+      return;
+    }
+
+    driver.name = `${firstName.trim()} ${lastName.trim()}`;
+    driver.gender = gender;
+    if (email?.trim()) (driver as any).email = email.trim().toLowerCase();
+    if (dateOfBirth) driver.dateOfBirth = new Date(dateOfBirth);
+    if (alternatePhone?.trim()) driver.alternatePhone = alternatePhone.trim();
+    if (languages?.length) driver.languages = languages;
+
+    await driver.save();
+    logger.info({ userId, name: driver.name }, 'Driver profile completed');
+
+    const driverObj = driver.toObject() as any;
+    delete driverObj.otp;
+    delete driverObj.otpExpiresAt;
+    delete driverObj.refreshToken;
+
+    res.json({ driver: driverObj });
+  } catch (error) {
+    logger.error({ error }, 'Driver profile completion failed');
+    res.status(500).json({ error: 'profile_failed', message: 'Failed to save profile' });
+  }
+});
+
 
 // ─── Admin Login ──────────────────────────────────────────────────────────────
 

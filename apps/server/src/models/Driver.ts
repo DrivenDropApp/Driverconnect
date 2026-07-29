@@ -4,6 +4,11 @@ import bcrypt from 'bcryptjs';
 export interface IDriver extends Document {
   phone: string;
   name: string;
+  gender?: 'male' | 'female' | 'other';
+  email?: string;
+  dateOfBirth?: Date;
+  alternatePhone?: string;
+  languages?: string[];
   kyc: {
     licenseUrl?: string;
     aadhaarUrl?: string;
@@ -34,6 +39,11 @@ export interface IDriver extends Document {
 const DriverSchema = new Schema<IDriver>({
   phone: { type: String, required: true, unique: true, index: true },
   name: { type: String, required: true },
+  gender: { type: String, enum: ['male', 'female', 'other'] },
+  email: { type: String },
+  dateOfBirth: { type: Date },
+  alternatePhone: { type: String },
+  languages: [{ type: String }],
   kyc: {
     licenseUrl: { type: String },
     aadhaarUrl: { type: String },

@@ -33,15 +33,34 @@ function IconChevronLeft() {
   );
 }
 
+function IconUser() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"
+      style={{ width: 22, height: 22, color: 'var(--color-primary)' }}>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 20c0-4.4 3.6-7 8-7s8 2.6 8 7" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export default function LoginPage() {
   const navigate = useNavigate();
-  const { setAuth } = useAuthStore();
-  const [step, setStep] = useState<'phone' | 'otp'>('phone');
+  const { setAuth, updateUser } = useAuthStore();
+  const [step, setStep] = useState<'phone' | 'otp' | 'profile'>('phone');
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState(['', '', '', '']);
   const [loading, setLoading] = useState(false);
   const [devOtp, setDevOtp] = useState<string>('');
+
+  // Profile step state
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const nameInputRef = useRef<HTMLInputElement>(null);
+
+  // Temporarily store tokens for new user before profile is saved
+  const pendingAuth = useRef<{ user: any; accessToken: string; refreshToken: string } | null>(null);
 
   const handleSendOtp = async () => {
     if (phone.length < 10) { toast.error('Enter a valid 10-digit phone number'); return; }
@@ -62,15 +81,23 @@ export default function LoginPage() {
     }
   };
 
-  const handleVerifyOtp = async () => {
-    const otpStr = otp.join('');
-    if (otpStr.length < 4) { toast.error('Enter the 4-digit OTP'); return; }
+  const proceedAfterOtp = async (otpStr: string) => {
     setLoading(true);
     try {
       const res: any = await api.login(phone, otpStr);
-      setAuth(res.user, res.accessToken, res.refreshToken);
-      toast.success(`Welcome, ${res.user?.name || 'there'}!`);
-      navigate('/');
+
+      if (res.isNewUser) {
+        // Store tokens temporarily, show profile completion step
+        pendingAuth.current = { user: res.user, accessToken: res.accessToken, refreshToken: res.refreshToken };
+        // Set auth so the completeProfile API call can use the token
+        setAuth(res.user, res.accessToken, res.refreshToken);
+        setStep('profile');
+        setTimeout(() => nameInputRef.current?.focus(), 100);
+      } else {
+        setAuth(res.user, res.accessToken, res.refreshToken);
+        toast.success(`Welcome back, ${res.user?.name || 'there'}!`);
+        navigate('/');
+      }
     } catch (err: any) {
       toast.error(err.message || 'Invalid OTP');
     } finally {
@@ -78,18 +105,10 @@ export default function LoginPage() {
     }
   };
 
-  const handleVerifyOtpWithValue = async (otpStr: string) => {
-    setLoading(true);
-    try {
-      const res: any = await api.login(phone, otpStr);
-      setAuth(res.user, res.accessToken, res.refreshToken);
-      toast.success(`Welcome, ${res.user?.name || 'there'}!`);
-      navigate('/');
-    } catch (err: any) {
-      toast.error(err.message || 'Invalid OTP');
-    } finally {
-      setLoading(false);
-    }
+  const handleVerifyOtp = () => {
+    const otpStr = otp.join('');
+    if (otpStr.length < 4) { toast.error('Enter the 4-digit OTP'); return; }
+    proceedAfterOtp(otpStr);
   };
 
   const handleOtpChange = (index: number, value: string) => {
@@ -99,13 +118,29 @@ export default function LoginPage() {
     setOtp(newOtp);
     if (value && index < 3) inputRefs.current[index + 1]?.focus();
     if (newOtp.every(d => d) && newOtp.join('').length === 4) {
-      setTimeout(() => handleVerifyOtpWithValue(newOtp.join('')), 100);
+      setTimeout(() => proceedAfterOtp(newOtp.join('')), 100);
     }
   };
 
   const handleOtpKeyDown = (index: number, e: React.KeyboardEvent) => {
     if (e.key === 'Backspace' && !otp[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handleCompleteProfile = async () => {
+    if (fullName.trim().length < 2) { toast.error('Please enter your full name (at least 2 characters)'); return; }
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toast.error('Please enter a valid email address'); return; }
+    setLoading(true);
+    try {
+      const res: any = await api.completeProfile(fullName.trim(), email.trim());
+      updateUser(res.user);
+      toast.success(`Welcome to DriverConnect, ${res.user.name}! 🎉`);
+      navigate('/');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to save profile');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -154,9 +189,11 @@ export default function LoginPage() {
 
         {/* Card */}
         <div className="card">
-          {step === 'phone' ? (
+
+          {/* ── Step 1: Phone ─────────────────────────────── */}
+          {step === 'phone' && (
             <div>
-              <h2 style={{ fontSize: '1.25rem', marginBottom: '0.375rem' }}>Welcome back</h2>
+              <h2 style={{ fontSize: '1.25rem', marginBottom: '0.375rem' }}>Welcome</h2>
               <p style={{ color: 'var(--color-text-muted)', marginBottom: '1.75rem', fontSize: '0.875rem' }}>
                 Enter your phone number to continue
               </p>
@@ -205,7 +242,10 @@ export default function LoginPage() {
                 </p>
               </div>
             </div>
-          ) : (
+          )}
+
+          {/* ── Step 2: OTP ───────────────────────────────── */}
+          {step === 'otp' && (
             <div>
               <button
                 className="btn btn-ghost"
@@ -256,7 +296,7 @@ export default function LoginPage() {
                 disabled={loading || otp.join('').length < 4}
               >
                 {loading && <div className="spinner" style={{ width: 18, height: 18, borderWidth: 2 }} />}
-                {loading ? 'Verifying...' : 'Verify & Login'}
+                {loading ? 'Verifying...' : 'Verify & Continue'}
               </button>
 
               <p style={{ textAlign: 'center', marginTop: '1rem', fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>
@@ -268,6 +308,87 @@ export default function LoginPage() {
                 >
                   Resend OTP
                 </button>
+              </p>
+            </div>
+          )}
+
+          {/* ── Step 3: Profile (new users only) ─────────── */}
+          {step === 'profile' && (
+            <div>
+              {/* Progress indicator */}
+              <div style={{ display: 'flex', gap: '0.375rem', marginBottom: '1.5rem' }}>
+                {['phone', 'otp', 'profile'].map((s, i) => (
+                  <div key={s} style={{
+                    flex: 1, height: 3, borderRadius: 2,
+                    background: i <= 2 ? 'var(--color-primary)' : 'var(--color-border)',
+                    opacity: i === 2 ? 1 : 0.4,
+                    transition: 'opacity 0.3s',
+                  }} />
+                ))}
+              </div>
+
+              {/* Icon */}
+              <div style={{
+                width: 52, height: 52, borderRadius: '50%',
+                background: 'var(--color-primary-subtle)',
+                border: '1px solid rgba(13,148,136,0.2)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                marginBottom: '1rem',
+              }}>
+                <IconUser />
+              </div>
+
+              <h2 style={{ fontSize: '1.25rem', marginBottom: '0.25rem' }}>Complete your profile</h2>
+              <p style={{ color: 'var(--color-text-muted)', marginBottom: '1.75rem', fontSize: '0.875rem' }}>
+                Just one more step — tell us your name to get started
+              </p>
+
+              {/* Full Name */}
+              <div className="input-group" style={{ marginBottom: '1.125rem' }}>
+                <label className="input-label">Full Name <span style={{ color: '#EF4444' }}>*</span></label>
+                <input
+                  ref={nameInputRef}
+                  type="text"
+                  className="input"
+                  placeholder="e.g. Rahul Patil"
+                  value={fullName}
+                  onChange={e => setFullName(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && !e.nativeEvent.isComposing && handleCompleteProfile()}
+                  autoComplete="name"
+                />
+              </div>
+
+              {/* Email */}
+              <div className="input-group" style={{ marginBottom: '1.75rem' }}>
+                <label className="input-label">
+                  Email Address{' '}
+                  <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>(optional)</span>
+                </label>
+                <input
+                  type="email"
+                  className="input"
+                  placeholder="e.g. rahul@email.com"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && !e.nativeEvent.isComposing && handleCompleteProfile()}
+                  autoComplete="email"
+                />
+              </div>
+
+              <button
+                className="btn btn-primary btn-full btn-lg"
+                onClick={handleCompleteProfile}
+                disabled={loading || fullName.trim().length < 2}
+                style={{ gap: '0.5rem' }}
+              >
+                {loading
+                  ? <div className="spinner" style={{ width: 18, height: 18, borderWidth: 2 }} />
+                  : <IconArrowRight />}
+                {loading ? 'Saving...' : 'Get Started →'}
+              </button>
+
+              <p style={{ textAlign: 'center', marginTop: '0.875rem', fontSize: '0.75rem', color: 'var(--color-text-disabled)' }}>
+                You can update these details later in your profile
               </p>
             </div>
           )}
