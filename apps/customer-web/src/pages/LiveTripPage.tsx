@@ -58,8 +58,8 @@ export default function LiveTripPage() {
     socket.on('booking:assigned', (data: any) => {
       setBooking(data.booking);
       toast.success('Driver found! On the way...');
-      // Join trip room
-      socket.join?.(`trip:${data.booking._id}`);
+      // Re-trigger active trip room join
+      socket.emit('join:active');
     });
 
     // Location updates from driver - animate, don't re-render
