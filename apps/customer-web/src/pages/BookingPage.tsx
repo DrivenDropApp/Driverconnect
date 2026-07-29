@@ -92,7 +92,7 @@ export default function BookingPage() {
     const map = L.map(mapEl, { zoomControl: false }).setView([PUNE_CENTER.lat, PUNE_CENTER.lng], 13);
     const OLA_API_KEY = import.meta.env.VITE_OLA_MAPS_KEY;
     if (OLA_API_KEY) {
-      L.tileLayer(`https://api.olamaps.io/tiles/v1/styles/default-light-standard/tile/{z}/{x}/{y}.png?api_key=${OLA_API_KEY}`, {
+      L.tileLayer(`https://api.olamaps.io/tiles/v1/styles/default-light-standard/{z}/{x}/{y}.png?api_key=${OLA_API_KEY}`, {
         attribution: '© Ola Maps',
         maxZoom: 18,
       }).addTo(map);
