@@ -86,7 +86,16 @@ export default function LiveTripPage() {
 
     const center = booking.pickup || { lat: 18.5204, lng: 73.8567 };
     const map = L.map(mapEl, { zoomControl: false }).setView([center.lat, center.lng], 14);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    
+    const mapboxToken = import.meta.env.VITE_MAPBOX_TOKEN;
+    if (mapboxToken) {
+      L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/256/{z}/{x}/{y}@2x?access_token=${mapboxToken}`, {
+        attribution: '© Mapbox',
+        maxZoom: 18,
+      }).addTo(map);
+    } else {
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+    }
 
     // Pickup marker
     L.circleMarker([booking.pickup.lat, booking.pickup.lng], {

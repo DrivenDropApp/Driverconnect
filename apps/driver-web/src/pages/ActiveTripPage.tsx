@@ -54,7 +54,16 @@ export default function ActiveTripPage() {
     if (!mapEl) return;
 
     const map = L.map(mapEl, { zoomControl: false }).setView([18.5204, 73.8567], 14);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    
+    const mapboxToken = import.meta.env.VITE_MAPBOX_TOKEN;
+    if (mapboxToken) {
+      L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/256/{z}/{x}/{y}@2x?access_token=${mapboxToken}`, {
+        attribution: '© Mapbox',
+        maxZoom: 18,
+      }).addTo(map);
+    } else {
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+    }
     L.control.zoom({ position: 'bottomright' }).addTo(map);
     mapRef.current = map;
   };
