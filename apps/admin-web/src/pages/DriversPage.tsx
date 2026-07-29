@@ -2,6 +2,15 @@ import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { adminApi } from '../lib/api';
 
+const FILTERS = [['', 'All'], ['pending', 'Pending KYC'], ['verified', 'Verified'], ['rejected', 'Rejected']];
+
+const KYC_FILTER_LABELS: Record<string, string> = {
+  '': 'All',
+  pending: 'Pending',
+  verified: 'Verified',
+  rejected: 'Rejected',
+};
+
 export default function DriversPage() {
   const [drivers, setDrivers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -28,14 +37,18 @@ export default function DriversPage() {
 
   return (
     <div className="animate-fade-in">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-        <div>
-          <h1 style={{ fontSize: '1.25rem' }}>Drivers</h1>
-          <p style={{ fontSize: '0.8rem', color: '#64748B' }}>Manage all drivers</p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
+        <div className="page-header" style={{ marginBottom: 0 }}>
+          <h1 className="page-title">Drivers</h1>
+          <p className="page-subtitle">Manage all platform drivers</p>
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          {[['', 'All'], ['pending', 'KYC Pending'], ['verified', 'Verified'], ['rejected', 'Rejected']].map(([val, label]) => (
-            <button key={val} onClick={() => setKycFilter(val)} className={`btn ${kycFilter === val ? 'btn-primary' : 'btn-secondary'}`} style={{ padding: '0.3rem 0.75rem', fontSize: '0.72rem' }}>
+        <div className="filter-tabs">
+          {FILTERS.map(([val, label]) => (
+            <button
+              key={val}
+              onClick={() => setKycFilter(val)}
+              className={`filter-tab ${kycFilter === val ? 'active' : ''}`}
+            >
               {label}
             </button>
           ))}
@@ -44,15 +57,17 @@ export default function DriversPage() {
 
       <div className="table-container">
         {loading ? (
-          <div style={{ padding: '2rem', textAlign: 'center' }}><div className="spinner" style={{ width: '24px', height: '24px', margin: '0 auto' }} /></div>
+          <div style={{ padding: '2rem', textAlign: 'center' }}>
+            <div className="spinner" style={{ width: 24, height: 24, margin: '0 auto' }} />
+          </div>
         ) : (
           <table>
             <thead>
               <tr>
                 <th>Driver</th>
                 <th>Phone</th>
-                <th>KYC</th>
-                <th>Status</th>
+                <th>KYC Status</th>
+                <th>Online</th>
                 <th>Rating</th>
                 <th>Trips</th>
                 <th>Actions</th>
@@ -60,22 +75,52 @@ export default function DriversPage() {
             </thead>
             <tbody>
               {drivers.length === 0 ? (
-                <tr><td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: '#64748B' }}>No drivers found</td></tr>
+                <tr>
+                  <td colSpan={7}>
+                    <div className="empty-state">
+                      <p className="empty-state-text">No drivers found for filter: {KYC_FILTER_LABELS[kycFilter]}</p>
+                    </div>
+                  </td>
+                </tr>
               ) : drivers.map((d: any) => (
                 <tr key={d._id}>
                   <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <img src={d.kyc?.photoUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${d.name}`} alt="" style={{ width: '24px', height: '24px', borderRadius: '50%', flexShrink: 0 }} />
-                      <span style={{ fontWeight: 600, color: '#E2E8F0' }}>{d.name}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
+                      <img
+                        src={d.kyc?.photoUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${d.name}`}
+                        alt=""
+                        style={{ width: 26, height: 26, borderRadius: '50%', flexShrink: 0, border: '1px solid var(--color-border-strong)' }}
+                      />
+                      <span style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{d.name}</span>
                     </div>
                   </td>
-                  <td>{d.phone}</td>
-                  <td><span className={`badge badge-${d.kyc?.status || 'pending'}`}>{d.kyc?.status || 'pending'}</span></td>
-                  <td><span className={`badge ${d.isOnline ? 'badge-online' : 'badge-offline'}`}>{d.isOnline ? '● Online' : '○ Offline'}</span></td>
-                  <td>⭐ {d.rating?.toFixed(1) || '—'}</td>
-                  <td>{d.totalTrips || 0}</td>
+                  <td style={{ fontFamily: 'monospace', letterSpacing: '0.02em' }}>{d.phone}</td>
                   <td>
-                    <button className="btn btn-danger btn-sm" onClick={() => handleSuspend(d._id, d.name)}>
+                    <span className={`badge badge-${d.kyc?.status || 'pending'}`}>
+                      {d.kyc?.status || 'pending'}
+                    </span>
+                  </td>
+                  <td>
+                    <span className={`badge ${d.isOnline ? 'badge-online' : 'badge-offline'}`}>
+                      <span style={{
+                        width: 5, height: 5, borderRadius: '50%',
+                        background: d.isOnline ? 'var(--color-success)' : 'var(--color-text-disabled)',
+                        display: 'inline-block',
+                      }} />
+                      {d.isOnline ? 'Online' : 'Offline'}
+                    </span>
+                  </td>
+                  <td>
+                    <span style={{ color: 'var(--color-warning)', fontWeight: 600 }}>
+                      {d.rating?.toFixed(1) || '—'}
+                    </span>
+                  </td>
+                  <td style={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>{d.totalTrips || 0}</td>
+                  <td>
+                    <button
+                      className="btn btn-danger btn-sm"
+                      onClick={() => handleSuspend(d._id, d.name)}
+                    >
                       Suspend
                     </button>
                   </td>

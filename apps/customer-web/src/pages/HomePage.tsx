@@ -4,15 +4,105 @@ import { useAuthStore } from '../store/authStore';
 import { api } from '../lib/api';
 import toast from 'react-hot-toast';
 
+/* ── SVG Icons ─────────────────────────────────────────────────────── */
+function IconHome({ active }: { active?: boolean }) {
+  return (
+    <svg viewBox="0 0 22 22" fill="none" stroke="currentColor" strokeWidth="1.8"
+      style={{ width: 22, height: 22 }}>
+      <path d="M3 9.5L11 2l8 7.5V20a1 1 0 01-1 1H14v-5h-4v5H4a1 1 0 01-1-1V9.5z"
+        fill={active ? 'currentColor' : 'none'} />
+    </svg>
+  );
+}
+function IconList({ active }: { active?: boolean }) {
+  return (
+    <svg viewBox="0 0 22 22" fill="none" stroke="currentColor" strokeWidth="1.8"
+      style={{ width: 22, height: 22 }}>
+      <rect x="3" y="5" width="16" height="2.5" rx="1.25" fill={active ? 'currentColor' : 'none'} />
+      <rect x="3" y="10.5" width="16" height="2.5" rx="1.25" />
+      <rect x="3" y="16" width="10" height="2.5" rx="1.25" />
+    </svg>
+  );
+}
+function IconUser({ active }: { active?: boolean }) {
+  return (
+    <svg viewBox="0 0 22 22" fill="none" stroke="currentColor" strokeWidth="1.8"
+      style={{ width: 22, height: 22 }}>
+      <circle cx="11" cy="7" r="4" fill={active ? 'currentColor' : 'none'} />
+      <path d="M2 20c0-4.5 4-7 9-7s9 2.5 9 7" strokeLinecap="round" />
+    </svg>
+  );
+}
+function IconMapPin() {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"
+      style={{ width: 16, height: 16, flexShrink: 0 }}>
+      <circle cx="8" cy="6.5" r="2.5" />
+      <path d="M8 1C5 1 2.5 3.5 2.5 6.5c0 4 5.5 8.5 5.5 8.5s5.5-4.5 5.5-8.5C13.5 3.5 11 1 8 1z" />
+    </svg>
+  );
+}
+function IconArrowRight() {
+  return (
+    <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2"
+      style={{ width: 14, height: 14 }}>
+      <path d="M2 7h10M8 3l4 4-4 4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/* ── Trip type icons ───────────────────────────────────────────────── */
+function IconCity() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"
+      style={{ width: 22, height: 22 }}>
+      <rect x="2" y="7" width="6" height="15" />
+      <rect x="8" y="3" width="8" height="19" />
+      <rect x="16" y="10" width="6" height="12" />
+      <line x1="2" y1="22" x2="22" y2="22" />
+    </svg>
+  );
+}
+function IconRoad() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"
+      style={{ width: 22, height: 22 }}>
+      <path d="M5 22L10 2M19 22L14 2M10 12h4" strokeLinecap="round" />
+    </svg>
+  );
+}
+function IconClock() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"
+      style={{ width: 22, height: 22 }}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 3" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function IconRefresh() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"
+      style={{ width: 22, height: 22 }}>
+      <path d="M21 2v6h-6M3 12a9 9 0 0115.8-5.8L21 8M3 22v-6h6M21 12a9 9 0 01-15.8 5.8L3 16" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+const TRIP_TYPES = [
+  { type: 'local',      icon: <IconCity />,    name: 'Local',      desc: 'Within city',     color: '#0D9488' },
+  { type: 'outstation', icon: <IconRoad />,    name: 'Outstation', desc: 'Between cities',  color: '#7C3AED' },
+  { type: 'hourly',     icon: <IconClock />,   name: 'Hourly',     desc: 'By the hour',     color: '#F59E0B' },
+  { type: 'roundtrip',  icon: <IconRefresh />, name: 'Round Trip', desc: 'There and back',  color: '#EF4444' },
+];
+
 export default function HomePage() {
   const { user } = useAuthStore();
   const navigate = useNavigate();
   const [activeBooking, setActiveBooking] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadActiveBooking();
-  }, []);
+  useEffect(() => { loadActiveBooking(); }, []);
 
   const loadActiveBooking = async () => {
     try {
@@ -26,30 +116,33 @@ export default function HomePage() {
   };
 
   const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Good morning';
-    if (hour < 18) return 'Good afternoon';
+    const h = new Date().getHours();
+    if (h < 12) return 'Good morning';
+    if (h < 18) return 'Good afternoon';
     return 'Good evening';
   };
 
-  const TRIP_TYPES = [
-    { type: 'local', icon: '🏙️', name: 'Local', desc: 'Within city', color: '#0D9488' },
-    { type: 'outstation', icon: '🛣️', name: 'Outstation', desc: 'Between cities', color: '#7C3AED' },
-    { type: 'hourly', icon: '⏱️', name: 'Hourly', desc: 'By the hour', color: '#F59E0B' },
-    { type: 'roundtrip', icon: '🔄', name: 'Round Trip', desc: 'There and back', color: '#EF4444' },
-  ];
+  const activeTripLabel = () => {
+    if (!activeBooking) return '';
+    const map: Record<string, string> = {
+      searching: 'Finding your driver...',
+      assigned:  'Driver is on the way',
+      started:   'Trip in progress',
+    };
+    return map[activeBooking.status] || 'Trip active';
+  };
 
   return (
-    <div className="page" style={{ paddingBottom: '80px' }}>
+    <div className="page" style={{ paddingBottom: 76 }}>
       {/* Navbar */}
       <nav className="navbar">
-        <span className="navbar-logo">DriverConnect</span>
+        <span className="navbar-logo">Driver<span>Connect</span></span>
         <Link to="/profile" style={{ textDecoration: 'none' }}>
           <div style={{
-            width: '36px', height: '36px', borderRadius: '50%',
+            width: 36, height: 36, borderRadius: '50%',
             background: 'linear-gradient(135deg, #0D9488, #0F766E)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '0.85rem', fontWeight: 700, color: 'white',
+            fontSize: '0.875rem', fontWeight: 700, color: 'white',
           }}>
             {user?.name?.charAt(0).toUpperCase() || 'U'}
           </div>
@@ -59,95 +152,81 @@ export default function HomePage() {
       <div style={{ padding: '1.5rem' }}>
         {/* Greeting */}
         <div className="animate-fade-in" style={{ marginBottom: '1.5rem' }}>
-          <p style={{ color: '#94A3B8', fontSize: '0.875rem' }}>{getGreeting()},</p>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 800, letterSpacing: '-0.02em' }}>
-            {user?.name || 'there'} 👋
+          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginBottom: '2px' }}>
+            {getGreeting()},
+          </p>
+          <h1 style={{ fontSize: '1.6rem', fontWeight: 800, letterSpacing: '-0.02em' }}>
+            {user?.name || 'there'}
           </h1>
         </div>
 
-        {/* Active booking banner */}
-        {activeBooking && (
+        {/* Active Booking Banner */}
+        {!loading && activeBooking && (
           <div
-            className="animate-fade-in"
+            className="active-booking-banner animate-fade-in"
             onClick={() => navigate(`/booking/live/${activeBooking._id}`)}
-            style={{
-              background: 'linear-gradient(135deg, rgba(13,148,136,0.2), rgba(15,118,110,0.1))',
-              border: '1px solid rgba(13,148,136,0.3)',
-              borderRadius: '16px', padding: '1.25rem', marginBottom: '1.5rem',
-              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '1rem',
-            }}
+            style={{ marginBottom: '1.5rem' }}
           >
-            <div style={{ fontSize: '2rem' }}>🚗</div>
-            <div style={{ flex: 1 }}>
-              <div className="badge badge-live" style={{ marginBottom: '4px' }}>Live Trip</div>
-              <p style={{ fontWeight: 600, fontSize: '0.9rem', color: '#F1F5F9' }}>
-                {activeBooking.status === 'searching' ? 'Finding your driver...' :
-                 activeBooking.status === 'assigned' ? 'Driver on the way!' :
-                 activeBooking.status === 'started' ? 'Trip in progress' : 'Trip active'}
-              </p>
-              <p style={{ fontSize: '0.8rem', color: '#94A3B8' }}>Tap to track →</p>
+            <div style={{
+              width: 44, height: 44, borderRadius: 12, flexShrink: 0,
+              background: 'rgba(13,148,136,0.2)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <IconMapPin />
             </div>
-            <div style={{ fontSize: '1.5rem' }}>→</div>
+            <div style={{ flex: 1 }}>
+              <span className="badge badge-live" style={{ marginBottom: 4 }}>Live Trip</span>
+              <p style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--color-text-primary)' }}>
+                {activeTripLabel()}
+              </p>
+              <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>Tap to track</p>
+            </div>
+            <IconArrowRight />
           </div>
         )}
 
-        {/* Trip Type Grid */}
+        {/* Trip Types */}
         <div style={{ marginBottom: '2rem' }}>
-          <h2 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '1rem' }}>
+          <h2 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '0.875rem', letterSpacing: '-0.01em' }}>
             What do you need?
           </h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
             {TRIP_TYPES.map(({ type, icon, name, desc, color }) => (
               <button
                 key={type}
+                className="trip-type-card"
                 onClick={() => navigate(`/booking/new?type=${type}`)}
-                style={{
-                  background: 'var(--color-surface)',
-                  border: '1px solid var(--color-border)',
-                  borderRadius: '16px', padding: '1.25rem',
-                  cursor: 'pointer', textAlign: 'left',
-                  transition: 'all 0.2s ease', display: 'flex', flexDirection: 'column', gap: '0.5rem',
-                }}
-                onMouseEnter={e => {
-                  (e.currentTarget as HTMLButtonElement).style.borderColor = color;
-                  (e.currentTarget as HTMLButtonElement).style.background = `${color}10`;
-                }}
-                onMouseLeave={e => {
-                  (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--color-border)';
-                  (e.currentTarget as HTMLButtonElement).style.background = 'var(--color-surface)';
-                }}
               >
-                <div style={{
-                  width: '48px', height: '48px', borderRadius: '12px',
-                  background: `${color}20`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '1.5rem',
-                }}>
+                <div
+                  className="trip-type-icon-wrap"
+                  style={{ color }}
+                >
                   {icon}
                 </div>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#F1F5F9' }}>{name}</div>
-                  <div style={{ fontSize: '0.75rem', color: '#94A3B8' }}>{desc}</div>
+                <div style={{ flex: 1 }}>
+                  <div className="trip-type-name">{name}</div>
+                  <div className="trip-type-desc">{desc}</div>
+                </div>
+                <div style={{ color: 'var(--color-text-disabled)' }}>
+                  <IconArrowRight />
                 </div>
               </button>
             ))}
           </div>
         </div>
 
-        {/* Quick Info */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem' }}>
+        {/* Stats Row */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.625rem' }}>
           {[
-            { icon: '✅', label: 'Verified Drivers', value: '12+' },
-            { icon: '⭐', label: 'Avg Rating', value: '4.8' },
-            { icon: '⚡', label: 'Avg Pickup', value: '8 min' },
-          ].map(({ icon, label, value }) => (
-            <div key={label} style={{
-              background: 'var(--color-surface)', border: '1px solid var(--color-border)',
-              borderRadius: '12px', padding: '1rem', textAlign: 'center',
-            }}>
-              <div style={{ fontSize: '1.5rem' }}>{icon}</div>
-              <div style={{ fontSize: '1rem', fontWeight: 700, color: '#F1F5F9', marginTop: '4px' }}>{value}</div>
-              <div style={{ fontSize: '0.7rem', color: '#94A3B8', marginTop: '2px' }}>{label}</div>
+            { label: 'Verified Drivers', value: '12+' },
+            { label: 'Avg Rating',       value: '4.8' },
+            { label: 'Avg Pickup',       value: '8 min' },
+          ].map(({ label, value }) => (
+            <div key={label} className="stat-mini">
+              <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-text-primary)', marginBottom: 2 }}>
+                {value}
+              </div>
+              <div style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>{label}</div>
             </div>
           ))}
         </div>
@@ -156,15 +235,15 @@ export default function HomePage() {
       {/* Bottom Tab Bar */}
       <nav className="tab-bar">
         <Link to="/" className="tab-item active">
-          <span style={{ fontSize: '1.25rem' }}>🏠</span>
+          <IconHome active />
           <span>Home</span>
         </Link>
         <Link to="/history" className="tab-item">
-          <span style={{ fontSize: '1.25rem' }}>📋</span>
+          <IconList />
           <span>Trips</span>
         </Link>
         <Link to="/profile" className="tab-item">
-          <span style={{ fontSize: '1.25rem' }}>👤</span>
+          <IconUser />
           <span>Profile</span>
         </Link>
       </nav>
