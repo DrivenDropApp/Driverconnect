@@ -150,7 +150,7 @@ export default function HomePage() {
       ]);
       setProfile(profileData);
       setEarnings(earningsData);
-    } catch {}
+    } catch { }
   };
 
   const setupSocket = (token: string) => {
@@ -296,7 +296,7 @@ export default function HomePage() {
               fontSize: '1.05rem',
               color: isOnline ? 'var(--color-online-light)' : 'var(--color-text-primary)',
             }}>
-              {isOnline ? 'You&apos;re Online' : 'You&apos;re Offline'}
+              {isOnline ? 'You are Online' : 'You are Offline'}
             </div>
             <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
               {isOnline ? 'Receiving booking requests' : 'Go online to accept rides'}
