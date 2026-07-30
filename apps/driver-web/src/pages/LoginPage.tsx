@@ -69,6 +69,9 @@ export default function LoginPage() {
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const firstNameRef = useRef<HTMLInputElement>(null);
 
+  // Temp storage for new-user tokens (don't set isAuthenticated until profile done)
+  const pendingAuthRef = useRef<{ driver: any; accessToken: string; refreshToken: string } | null>(null);
+
   // Profile fields
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -104,12 +107,22 @@ export default function LoginPage() {
     try {
       const res: any = await driverApi.login(phone, code);
       if (res.isNewUser) {
-        setAuth(res.driver, res.accessToken, res.refreshToken);
+        // Don't call setAuth yet — that would flip isAuthenticated and cause
+        // PublicRoute to immediately redirect away before the form is filled.
+        // Store tokens temporarily and show the profile form.
+        pendingAuthRef.current = {
+          driver: res.driver,
+          accessToken: res.accessToken,
+          refreshToken: res.refreshToken,
+        };
         setStep('profile');
         setTimeout(() => firstNameRef.current?.focus(), 100);
       } else {
         setAuth(res.driver, res.accessToken, res.refreshToken);
-        toast.success(`Welcome back, ${res.driver?.name}!`);
+        const displayName = res.driver?.name && res.driver.name !== '__pending__'
+          ? res.driver.name
+          : 'Driver';
+        toast.success(`Welcome back, ${displayName}!`);
         navigate('/');
       }
     } catch (err: any) {
@@ -143,8 +156,17 @@ export default function LoginPage() {
     if (alternatePhone && alternatePhone.replace(/\D/g, '').length !== 10) {
       toast.error('Alternate phone must be 10 digits'); return;
     }
+    if (!pendingAuthRef.current) {
+      toast.error('Session expired. Please log in again.');
+      setStep('phone');
+      return;
+    }
     setLoading(true);
     try {
+      // First authenticate so the API call has a valid token
+      const { driver: pendingDriver, accessToken, refreshToken } = pendingAuthRef.current;
+      setAuth(pendingDriver, accessToken, refreshToken);
+
       const res: any = await driverApi.completeDriverProfile({
         firstName: firstName.trim(),
         lastName: lastName.trim(),
