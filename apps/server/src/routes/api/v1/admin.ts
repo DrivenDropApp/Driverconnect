@@ -73,7 +73,7 @@ router.get('/kyc', async (req: Request, res: Response) => {
     const drivers = await Driver.find(query)
       .sort({ _id: -1 })
       .limit(parseInt(limit as string) + 1)
-      .select('name phone kyc createdAt');
+      .select('name phone gender email dateOfBirth alternatePhone languages kyc createdAt');
 
     const hasMore = drivers.length > parseInt(limit as string);
     const items = hasMore ? drivers.slice(0, -1) : drivers;
