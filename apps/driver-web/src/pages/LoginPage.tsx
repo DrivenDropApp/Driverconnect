@@ -170,13 +170,33 @@ export default function LoginPage() {
     );
   };
 
+  // DOB must be at least 18 years before today
+  const maxDob = (() => {
+    const d = new Date();
+    d.setFullYear(d.getFullYear() - 18);
+    return d.toISOString().split('T')[0];
+  })();
+
+  const isAdult = (dob: string) => {
+    if (!dob) return false;
+    const birth = new Date(dob);
+    const cutoff = new Date();
+    cutoff.setFullYear(cutoff.getFullYear() - 18);
+    return birth <= cutoff;
+  };
+
   const handleCompleteProfile = async () => {
     if (!firstName.trim()) { toast.error('Enter your first name'); return; }
     if (!lastName.trim()) { toast.error('Enter your last name'); return; }
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toast.error('Enter a valid email'); return; }
-    if (alternatePhone && alternatePhone.replace(/\D/g, '').length !== 10) {
+    if (!email.trim()) { toast.error('Email is required'); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toast.error('Enter a valid email address'); return; }
+    if (!dateOfBirth) { toast.error('Date of birth is required'); return; }
+    if (!isAdult(dateOfBirth)) { toast.error('You must be at least 18 years old to register'); return; }
+    if (!alternatePhone.trim()) { toast.error('Alternate phone number is required'); return; }
+    if (alternatePhone.replace(/\D/g, '').length !== 10) {
       toast.error('Alternate phone must be 10 digits'); return;
     }
+    if (selectedLanguages.length === 0) { toast.error('Select at least one language'); return; }
     if (!pendingAuthRef.current) {
       toast.error('Session expired. Please log in again.');
       setStep('phone');
@@ -192,10 +212,10 @@ export default function LoginPage() {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         gender,
-        email: email.trim() || undefined,
-        dateOfBirth: dateOfBirth || undefined,
-        alternatePhone: alternatePhone.trim() || undefined,
-        languages: selectedLanguages.length ? selectedLanguages : undefined,
+        email: email.trim(),
+        dateOfBirth,
+        alternatePhone: alternatePhone.trim(),
+        languages: selectedLanguages,
       });
       updateDriver(res.driver);
       toast.success(`Welcome, ${res.driver.name}! Your profile is submitted for KYC review. 🎉`);
@@ -397,7 +417,7 @@ export default function LoginPage() {
             <div style={{ marginBottom: '1rem' }}>
               <h2 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.2rem' }}>Complete Your Profile</h2>
               <p style={{ fontSize: '0.76rem', color: 'var(--color-text-muted)', margin: 0 }}>
-                Required fields marked <span style={{ color: '#EF4444' }}>*</span>
+                All fields are required <span style={{ color: '#EF4444' }}>*</span>
               </p>
             </div>
 
@@ -441,29 +461,34 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              {/* ── Optional section ── */}
+              {/* ── Additional Required section ── */}
               <div style={sectionBoxStyle}>
-                <p style={{
-                  fontSize: '0.65rem', fontWeight: 700, color: 'var(--color-text-muted)',
-                  textTransform: 'uppercase', letterSpacing: '0.07em', margin: 0,
-                }}>Optional Details</p>
-
                 <div>
-                  <label style={labelStyle}>Email</label>
+                  <label style={labelStyle}>Email <span style={{ color: '#EF4444' }}>*</span></label>
                   <input style={inputStyle} type="email"
                     placeholder="rahul@email.com" value={email}
                     onChange={e => setEmail(e.target.value)} autoComplete="email" />
                 </div>
 
                 <div>
-                  <label style={labelStyle}>Date of Birth</label>
+                  <label style={labelStyle}>
+                    Date of Birth <span style={{ color: '#EF4444' }}>*</span>
+                    <span style={{ color: 'var(--color-text-muted)', fontWeight: 400, fontSize: '0.62rem', marginLeft: 4 }}>
+                      (must be 18+)
+                    </span>
+                  </label>
                   <input style={{ ...inputStyle, colorScheme: 'dark' }} type="date"
                     value={dateOfBirth} onChange={e => setDateOfBirth(e.target.value)}
-                    max={new Date().toISOString().split('T')[0]} />
+                    max={maxDob} />
+                  {dateOfBirth && !isAdult(dateOfBirth) && (
+                    <p style={{ fontSize: '0.7rem', color: 'var(--color-error)', marginTop: '0.3rem', margin: '0.3rem 0 0' }}>
+                      You must be at least 18 years old
+                    </p>
+                  )}
                 </div>
 
                 <div>
-                  <label style={labelStyle}>Alternate Phone</label>
+                  <label style={labelStyle}>Alternate Phone <span style={{ color: '#EF4444' }}>*</span></label>
                   <input style={inputStyle} type="tel"
                     placeholder="Alternate number" value={alternatePhone}
                     onChange={e => setAlternatePhone(e.target.value.replace(/\D/g, '').slice(0, 10))} />
@@ -472,7 +497,7 @@ export default function LoginPage() {
 
               {/* ── Languages ── */}
               <div>
-                <label style={{ ...labelStyle, marginBottom: '0.5rem' }}>Languages Known</label>
+                <label style={{ ...labelStyle, marginBottom: '0.5rem' }}>Languages Known <span style={{ color: '#EF4444' }}>*</span></label>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
                   {LANGUAGES.map(lang => {
                     const selected = selectedLanguages.includes(lang);
@@ -502,7 +527,16 @@ export default function LoginPage() {
               {/* ── Submit ── */}
               <button className="btn btn-online btn-full btn-lg"
                 onClick={handleCompleteProfile}
-                disabled={loading || !firstName.trim() || !lastName.trim()}
+                disabled={
+                  loading ||
+                  !firstName.trim() ||
+                  !lastName.trim() ||
+                  !email.trim() ||
+                  !dateOfBirth ||
+                  !isAdult(dateOfBirth) ||
+                  alternatePhone.replace(/\D/g, '').length !== 10 ||
+                  selectedLanguages.length === 0
+                }
                 style={{ gap: '0.5rem', marginTop: '0.25rem', height: '3rem' }}>
                 {loading
                   ? <div className="spinner" style={{ width: 18, height: 18, borderWidth: 2 }} />
