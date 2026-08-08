@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './store/authStore';
 import LoginPage from './pages/LoginPage';
@@ -8,7 +7,6 @@ import LiveTripPage from './pages/LiveTripPage';
 import HistoryPage from './pages/HistoryPage';
 import ProfilePage from './pages/ProfilePage';
 import BookingDetailPage from './pages/BookingDetailPage';
-import TravelLoader from './components/TravelLoader';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -21,17 +19,6 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-  const [showLoader, setShowLoader] = useState(() => {
-    try { return sessionStorage.getItem('dc-customer-loader-seen') !== 'true'; } catch { return true; }
-  });
-
-  const finishLoader = () => {
-    try { sessionStorage.setItem('dc-customer-loader-seen', 'true'); } catch { /* storage unavailable */ }
-    setShowLoader(false);
-  };
-
-  if (showLoader) return <TravelLoader onComplete={finishLoader} />;
-
   return (
     <Routes>
       <Route
