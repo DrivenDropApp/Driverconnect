@@ -146,7 +146,7 @@ export default function HomePage() {
   return (
     <div className="page" style={{ paddingBottom: 76 }}>
       {/* Navbar */}
-      <nav className="navbar">
+      <nav className="navbar home-reveal home-reveal-1">
         <span className="navbar-logo">Driver<span>Connect</span></span>
         <Link to="/profile" style={{ textDecoration: 'none' }}>
           <div style={{
@@ -160,7 +160,7 @@ export default function HomePage() {
         </Link>
       </nav>
 
-      <div style={{ padding: '1.5rem' }}>
+      <div style={{ padding: '1.5rem' }} className="home-content">
         {/* Greeting */}
         <div className="animate-fade-in" style={{ marginBottom: '1.5rem' }}>
           <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginBottom: '2px' }}>
@@ -197,7 +197,7 @@ export default function HomePage() {
         )}
 
         {/* Trip Types */}
-        <div style={{ marginBottom: '2rem' }}>
+        <div style={{ marginBottom: '2rem' }} className="home-reveal home-reveal-2">
           <h2 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '0.875rem', letterSpacing: '-0.01em' }}>
             What do you need?
           </h2>
@@ -227,7 +227,7 @@ export default function HomePage() {
         </div>
 
         {/* Stats Row */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.625rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.625rem' }} className="home-reveal home-reveal-3">
           {[
             { label: 'Verified Drivers', value: '12+' },
             { label: 'Avg Rating',       value: '4.8' },

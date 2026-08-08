@@ -168,6 +168,12 @@ export default function LoginPage() {
         borderRadius: '50%', pointerEvents: 'none',
       }} />
 
+      <div className="login-journey" aria-hidden="true">
+        <span className="login-journey-road" />
+        <span className="login-journey-car">●</span>
+        <span className="login-journey-dot login-journey-dot-one" />
+        <span className="login-journey-dot login-journey-dot-two" />
+      </div>
       <div style={{ width: '100%', maxWidth: 400, zIndex: 1 }} className="animate-fade-in">
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
